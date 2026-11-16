@@ -1,0 +1,14 @@
+node_modules
+.git
+.codex
+coverage
+test
+test-results
+playwright-report
+.npm-cache
+*.docx
+*.log
+.env
+.env.*
+!.env.example
+!.env.sample

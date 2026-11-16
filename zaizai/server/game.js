@@ -1,0 +1,154 @@
+export const MOVES = Object.freeze({
+  charge: { name: '仔', icon: '✦', cost: {}, description: '积蓄力量，获得 1 个仔。', color: 'mint' },
+  guard: { name: '防', icon: '◇', cost: {}, description: '抵挡本回合的枪与火球。', color: 'blue' },
+  hammer: { name: '锤', icon: '⚒', cost: {}, target: true, description: '获得 1 个锤；敲击使用防的目标：有仔扣 1 仔，无仔扣 1 生命。抵挡地震与海浪。', color: 'amber' },
+  gun: { name: '枪', icon: '↗', cost: { energy: 1 }, target: true, attack: 1, description: '对一名目标造成 1 点伤害，攻击点数 1。', color: 'red' },
+  fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。两人存活时攻击点数 2，否则为 1。', color: 'orange' },
+  angel: { name: '天使', icon: '♡', cost: { energy: 3 }, description: '恢复 1 点生命，没有生命上限。', color: 'pink' },
+  quake: { name: '地震', icon: '⌁', cost: { energy: 4 }, attack: 3, description: '对所有其他存活玩家造成 2 点伤害，攻击点数 3。', color: 'amber' },
+  darkAngel: { name: '黑天使', icon: '♜', cost: { energy: 5 }, target: true, attack: 4, description: '对一名目标造成 1 点伤害，自己恢复 1 生命。攻击点数 4，穿透圣盾。', color: 'violet' },
+  holy: { name: '圣盾', icon: '⬡', cost: { energy: 1 }, description: '抵挡除黑天使、流星锤破盾外的攻击，并获得 1 个圣盾。', color: 'blue' },
+  gold: { name: '金盾', icon: '◈', cost: { energy: 1 }, reflect: true, description: '预判一种攻击，反弹本回合命中自己的该类攻击。不能反弹流星锤。', color: 'amber' },
+  wave: { name: '海浪', icon: '≋', cost: { shields: 3 }, attack: 3, description: '对所有其他存活玩家造成 1 点伤害，反弹火球。攻击点数 3。', color: 'cyan' },
+  meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对使用圣盾或金盾者造成 1 伤害。亮招后可封锁任意一人的招式，资源照常消耗。', color: 'violet' },
+});
+
+export const REFLECTABLE = ['hammer', 'gun', 'fireball', 'quake', 'darkAngel', 'wave'];
+export const RESOURCE_NAMES = { energy: '仔', hammers: '锤', shields: '圣盾' };
+
+export function validateAction(players, playerId, action) {
+  const player = players.find(p => p.id === playerId);
+  if (!player || player.hp <= 0) throw new Error('你已阵亡，正在观战。');
+  if (!action || !Object.hasOwn(MOVES, action.move)) throw new Error('请选择有效招式。');
+  const move = MOVES[action.move];
+  for (const [resource, cost] of Object.entries(move.cost)) {
+    if (player[resource] < cost) throw new Error(`${RESOURCE_NAMES[resource]}不足。`);
+  }
+  if (move.target && !players.some(p => p.id === action.target && p.hp > 0 && p.id !== playerId)) {
+    throw new Error('请选择另一名存活玩家作为目标。');
+  }
+  if (move.reflect && !REFLECTABLE.includes(action.reflect)) throw new Error('请选择金盾要反弹的攻击。');
+  return { move: action.move, ...(move.target ? { target: action.target } : {}), ...(move.reflect ? { reflect: action.reflect } : {}) };
+}
+
+// Charge all costs before interrupts. Muting cancels effects, never the cost.
+export function payCosts(players, actions) {
+  return players.map(p => {
+    const next = { ...p };
+    if (p.hp > 0 && actions[p.id]) {
+      for (const [key, amount] of Object.entries(MOVES[actions[p.id].move].cost)) next[key] -= amount;
+    }
+    return next;
+  });
+}
+
+export function resolveRound(paidPlayers, actions, interrupts = {}) {
+  const players = paidPlayers.map(p => ({ ...p }));
+  const alive = players.filter(p => p.hp > 0);
+  const byId = new Map(players.map(p => [p.id, p]));
+  const muted = new Set();
+  const logs = [];
+  const hits = [];
+  const changes = Object.fromEntries(players.map(p => [p.id, { damage: 0, healing: 0, energy: 0, hammers: 0, shields: 0 }]));
+  const name = id => byId.get(id)?.name || '玩家';
+  const log = (type, text, extra = {}) => logs.push({ type, text, ...extra });
+
+  for (const caster of alive) {
+    const target = interrupts[caster.id];
+    if (actions[caster.id]?.move === 'meteor' && target && alive.some(p => p.id === target)) {
+      muted.add(target);
+      log('mute', `${name(caster.id)} 的流星锤封锁了 ${name(target)} 的招式。`, { source: caster.id, target });
+    }
+  }
+  const activeAction = id => muted.has(id) ? null : actions[id];
+  const attackPower = action => action?.move === 'fireball' && alive.length === 2 ? 2 : MOVES[action?.move]?.attack ?? null;
+
+  for (const p of alive) {
+    const action = activeAction(p.id);
+    if (!action) continue;
+    const change = changes[p.id];
+    if (action.move === 'charge') { p.energy++; change.energy++; log('gain', `${p.name} 获得 1 个仔。`); }
+    if (action.move === 'hammer') { p.hammers++; change.hammers++; }
+    if (action.move === 'holy') { p.shields++; change.shields++; }
+    if (action.move === 'angel' || action.move === 'darkAngel') { change.healing++; log('heal', `${p.name} 恢复 1 点生命。`, { target: p.id }); }
+  }
+
+  for (const p of alive) {
+    const action = activeAction(p.id);
+    if (!action) continue;
+    // An opponent may forfeit after choices are locked but before settlement.
+    if (MOVES[action.move].target && !alive.some(target => target.id === action.target)) continue;
+    const addHit = (target, amount, special = false) => hits.push({ source: p.id, target, move: action.move, amount, power: attackPower(action), special });
+    switch (action.move) {
+      case 'hammer': {
+        const target = byId.get(action.target);
+        if (activeAction(target?.id)?.move === 'guard') {
+          if (target.energy > 0) { target.energy--; changes[target.id].energy--; log('drain', `${p.name} 的锤敲掉了 ${target.name} 的 1 个仔。`); }
+          else addHit(target.id, 1, true);
+        }
+        break;
+      }
+      case 'gun': case 'darkAngel': addHit(action.target, 1); break;
+      case 'fireball': {
+        const i = alive.findIndex(t => t.id === action.target);
+        const targets = new Set([alive[i].id, alive[(i + 1) % alive.length].id, alive[(i - 1 + alive.length) % alive.length].id]);
+        targets.delete(p.id);
+        for (const target of targets) addHit(target, 1);
+        break;
+      }
+      case 'quake': case 'wave':
+        for (const target of alive) if (target.id !== p.id) addHit(target.id, action.move === 'quake' ? 2 : 1);
+        break;
+      case 'meteor':
+        // A muted shield is still a declared shield, but has no defensive effect.
+        for (const target of alive) if (target.id !== p.id && ['holy', 'gold'].includes(actions[target.id]?.move)) addHit(target.id, 1, true);
+        break;
+    }
+  }
+
+  const reflects = hit => {
+    const defense = activeAction(hit.target);
+    return hit.move !== 'meteor' && ((defense?.move === 'gold' && defense.reflect === hit.move) || (defense?.move === 'wave' && hit.move === 'fireball'));
+  };
+  // Explicit reflection takes priority; otherwise wave's fireball reflection
+  // could never trigger because wave itself always attacks the fireball caster.
+  // Compare only genuinely mutual attack hits, once, before applying damage.
+  const suppressed = new Set();
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i];
+    if (hit.power === null || reflects(hit)) continue;
+    if (hits.some(other => other.source === hit.target && other.target === hit.source && other.power !== null && other.power > hit.power)) {
+      suppressed.add(i);
+      log('clash', `${name(hit.source)} 的${MOVES[hit.move].name}被 ${name(hit.target)} 更高点数的攻击压制。`, { source: hit.source, target: hit.target });
+    }
+  }
+  const blocked = (hit, action) => {
+    if (!action) return false;
+    if (hit.move === 'meteor') return false;
+    if (action.move === 'guard' && ['gun', 'fireball'].includes(hit.move)) return true;
+    if (['hammer', 'meteor'].includes(action.move) && ['quake', 'wave'].includes(hit.move)) return true;
+    return action.move === 'holy' && hit.move !== 'darkAngel';
+  };
+  const deal = (hit, reflected = false) => {
+    const defense = activeAction(hit.target);
+    if (blocked(hit, defense)) {
+      log('block', `${name(hit.target)} 挡住了 ${name(hit.source)} 的${MOVES[hit.move].name}。`, { source: hit.source, target: hit.target });
+      return;
+    }
+    if (!reflected && reflects(hit)) {
+      log('reflect', `${name(hit.target)} 将${MOVES[hit.move].name}反弹给了 ${name(hit.source)}！`, { source: hit.target, target: hit.source });
+      deal({ ...hit, source: hit.target, target: hit.source }, true);
+      return;
+    }
+    changes[hit.target].damage += hit.amount;
+    log('damage', `${name(hit.source)} 的${MOVES[hit.move].name}对 ${name(hit.target)} 造成 ${hit.amount} 点伤害。`, { source: hit.source, target: hit.target, amount: hit.amount, reflected });
+  };
+  hits.forEach((hit, i) => { if (!suppressed.has(i)) deal(hit); });
+  for (const p of alive) {
+    p.hp += changes[p.id].healing - changes[p.id].damage;
+    if (p.hp <= 0) log('death', `${p.name} 已阵亡。`, { target: p.id });
+  }
+  const survivors = players.filter(p => p.hp > 0);
+  const finished = survivors.length <= 1;
+  return { players, logs, changes, muted: [...muted], hasDamage: Object.values(changes).some(c => c.damage > 0), finished, winnerId: finished && survivors.length === 1 ? survivors[0].id : null };
+}
