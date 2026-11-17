@@ -23,6 +23,17 @@ async function checkRing(page,count){
   const total=angles.reduce((sum,a,i)=>sum+(angles[(i+1)%angles.length]-a+Math.PI*2)%(Math.PI*2),0);
   assert.ok(Math.abs(total-Math.PI*2)<.001,'所有视角中序号小到大逆时针排列');
 }
+async function checkArenaCorners(page){
+  const corners=await page.evaluate(()=>{
+    const arena=document.querySelector('.arena'),r=arena.getBoundingClientRect();
+    return [['show-leaderboard',false],['show-history',true]].map(([act,bottom])=>{
+      const button=arena.querySelector('[data-act="'+act+'"]');if(!button)return false;
+      const b=button.getBoundingClientRect();
+      return button.parentElement===arena&&b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom&&(bottom?b.right>r.left+r.width/2&&b.top>r.top+r.height/2:b.right<r.left+r.width/2&&b.bottom<r.top+r.height/2);
+    });
+  });
+  assert.deepEqual(corners,[true,true],'排行榜与战况按钮直接位于战场内部左上角和右下角');
+}
 async function checkPlayViewport(page){
   const result=await page.evaluate(()=>{const rect=s=>document.querySelector(s).getBoundingClientRect();const arena=rect('.battle-panel'),controls=rect('.arsenal');return {arenaVisible:arena.top>=0&&arena.bottom<=innerHeight,controlsVisible:controls.top>=0&&controls.bottom<=innerHeight,inside:controls.left>=arena.left&&controls.right<=arena.right&&controls.top>=arena.top&&controls.bottom<=arena.bottom};});
   assert.ok(result.arenaVisible&&result.controlsVisible&&result.inside,'环形战场与中央可用招式完整同屏，无需滚动');
@@ -33,8 +44,8 @@ async function waitPhase(page, phase, round) {
     const { room } = await response.json();
     return room?.phase === phase && (!round || room.round === round);
   }, { phase, round }, { timeout: 15000 });
-  const text = { selecting: '秘密选招', interrupt: '流星锤封锁', reveal: '亮招 · 结算', finished: '本局结束' }[phase];
-  if(text)await page.locator('.room-heading .status-pill').filter({hasText:text}).waitFor();
+  const selector = { selecting: '.arena-controls .arsenal', interrupt: '.interrupt-panel', reveal: '.arena-hud .center-badge', finished: '.center-welcome' }[phase];
+  if(selector)await page.locator(selector).waitFor();
 }
 try {
   for (let i = 0; i < 3; i++) {
@@ -67,27 +78,33 @@ try {
   await a.getByLabel('房间名称').fill('今晚见招拆招');
   await a.locator('#room-capacity').selectOption('3');
   await a.locator('#create-form button[type=submit]').click();
-  await a.getByRole('heading', { name: '今晚见招拆招' }).waitFor();
+  await a.locator('.battle-room-name').filter({hasText:'今晚见招拆招'}).waitFor();
   const roomId = (await info(a)).room.id;
   for (const page of [b,c]) {
     await page.getByLabel('房间号', { exact: true }).fill(roomId);
     await page.locator('#join-form button').click();
-    await page.getByRole('heading', { name: '今晚见招拆招' }).waitFor();
+    await page.locator('.battle-room-name').filter({hasText:'今晚见招拆招'}).waitFor();
   }
   await a.getByLabel('调整房间人数').selectOption('8');
   await a.waitForTimeout(150);
   assert.equal((await info(b)).room.capacity, 8);
   for(const page of pages){await checkRing(page,3);assert.equal(await page.locator('.not-ready-bubble').count(),3);}
+  await checkArenaCorners(a);
   await screenshot(a, '04-room-waiting');
   await a.setViewportSize({ width: 390, height: 844 });
+  await checkArenaCorners(a);
   await screenshot(a, '05-room-mobile');
   assert.equal(await a.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, '手机房间没有横向溢出');
   await a.setViewportSize({ width: 1440, height: 1050 });
-  for (const page of pages) await page.locator('.room-settings [data-act=ready]').click();
+  for (const page of pages) await page.locator('.arena-controls [data-act=ready]').click();
   await waitPhase(a, 'selecting', 1);
   await a.locator('[data-act=move][data-id=charge]').waitFor();
   const idA = (await info(a)).self.id, idB = (await info(b)).self.id, idC = (await info(c)).self.id;
   for(const page of pages)await checkRing(page,3);
+  await a.locator('[data-act=move][data-id=hammer]').click();
+  assert.equal(await a.locator('[data-act=submit-action]').isDisabled(),true,'三名存活玩家时仍须手动选择目标');
+  assert.equal(await a.locator('.seat.target-selected').count(),0);
+  await a.locator('[data-act=move][data-id=charge]').click();
   assert.equal(await a.locator('.move-card').count(),3,'初始只显示仔、防、锤三种可用招式');
   assert.equal(await a.locator('.log-tabs').count(),0,'战报不再区分本回合和历史标签');
   await a.setViewportSize({width:1366,height:768});await checkPlayViewport(a);await screenshot(a,'12-compact-desktop');
@@ -155,6 +172,13 @@ try {
   await a.reload();
   await a.locator('[data-act=move][data-id=charge]').waitFor();
   assert.equal((await info(a)).self.id, idA, '刷新后恢复相同身份');
+  const duelEnergy=await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);const energy=me.energy;me.energy=20;render();return energy;});
+  for(const move of ['hammer','gun','fireball','darkAngel']){
+    await a.locator('[data-act=move][data-id="'+move+'"]').click();
+    assert.equal(await a.locator('.seat.target-selected').getAttribute('data-id'),idC,'两人存活时 '+move+' 自动指定对手，跳过死者');
+    assert.equal(await a.locator('[data-act=submit-action]').isEnabled(),true);
+  }
+  await a.evaluate(energy=>{state.room.players.find(p=>p.id===self.id).energy=energy;ui.move=null;ui.target=null;render();},duelEnergy);
   await clickMove(a,'charge');await clickMove(c,'charge');
   await waitPhase(a,'selecting',6);
   await screenshot(a,'09-battle-desktop');
@@ -163,7 +187,7 @@ try {
   await screenshot(a,'10-battle-mobile');
   assert.equal(await a.evaluate(()=>document.documentElement.scrollWidth <= innerWidth),true,'手机对战没有横向溢出');
   await a.locator('[data-act=move][data-id=gun]').click();
-  await a.locator(`[data-act=target][data-id="${idC}"]`).click();
+  assert.equal(await a.locator('.seat.target-selected').getAttribute('data-id'),idC);
   const box=await a.locator('.action-bar').boundingBox();
   assert.ok(box.y>=0&&box.y+box.height<=844,'手机选中目标后，锁定按钮保持在可见区域');
   await a.locator('[data-act=submit-action]').click();await clickMove(c,'charge');
@@ -172,12 +196,21 @@ try {
   room=(await info(a)).room;assert.equal(room.result.winnerId,idA);
   await screenshot(a,'11-victory');
   assert.equal(room.leaderboard.find(p=>p.id===idA).wins,1);
+  await a.locator('[data-act=show-leaderboard]').click();
+  await a.locator('#modal .leaderboard').waitFor();
+  assert.equal(await a.locator('#modal .ranking-list li').count(),3,'排行榜按钮打开本局结果和全员排名');
+  assert.equal(await a.locator('#modal .match-result').count(),1);
+  await a.locator('#modal [data-act=close-modal]').click();
+  await a.locator('[data-act=show-history]').click();
+  await a.locator('#modal .battle-log').waitFor();
+  assert.ok(await a.locator('#modal .log-round').count()>0,'战况记录弹窗只显示已结算的历史回合');
+  await a.locator('#modal [data-act=close-modal]').click();
   for(const page of pages){assert.equal(await page.locator('.not-ready-bubble').count(),3);assert.equal(await page.locator('.seat.is-dead').count(),0);}
-  await a.locator('.room-settings [data-act=ready]').click();
+  await a.locator('.arena-controls [data-act=ready]').click();
   await b.locator('.seat[data-id="'+idA+'"] .ready-bubble').waitFor();
   assert.equal(await b.locator('.not-ready-bubble').count(),2,'第二局前准备状态正确显示在每个人头像上方');
   await screenshot(b,'13-rematch-readiness');
-  await b.locator('.room-settings [data-act=ready]').click();await c.locator('.room-settings [data-act=ready]').click();
+  await b.locator('.arena-controls [data-act=ready]').click();await c.locator('.arena-controls [data-act=ready]').click();
   await waitPhase(a,'selecting',1);
   assert.ok((await info(a)).room.players.every(p=>p.hp===1&&p.energy===0&&p.shields===0&&p.hammers===0));
   assert.equal((await info(c)).room.leaderboard.find(p=>p.id===idA).wins,1,'重新开局保留胜场');
@@ -189,10 +222,12 @@ try {
   await c.locator('[data-act=leave]').click();
   await a.locator('.final-winner').filter({hasText:'橘子测试 获胜'}).waitFor();
   assert.equal((await info(a)).room.lastMatch.winnerId,idC);
-  assert.match(await a.locator('.match-result').textContent(),/橘子测试 获胜/);
+  await a.locator('[data-act=show-leaderboard]').click();
+  assert.match(await a.locator('#modal .match-result').textContent(),/橘子测试 获胜/);
+  await a.locator('#modal [data-act=close-modal]').click();
   await screenshot(a,'14-locked-winner-left');
   assert.deepEqual(errors,[],'浏览器无 JavaScript 或资源错误');
-  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 12 招式布局','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变'],screenshots:16,errors},null,2));
+  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 12 招式布局','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变'],screenshots:16,errors},null,2));
 } finally {
   for(const page of pages) {
     try { await page.evaluate(async()=>{const token=sessionStorage.getItem('zaizai-token');if(token)await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}'});}); } catch {}

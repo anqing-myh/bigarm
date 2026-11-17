@@ -3,7 +3,7 @@ export const MOVES = Object.freeze({
   guard: { name: '防', icon: '◇', cost: {}, description: '抵挡本回合的枪与火球。', color: 'blue' },
   hammer: { name: '锤', icon: '⚒', cost: {}, target: true, description: '获得 1 个锤；敲击使用防的目标：有仔扣 1 仔，无仔扣 1 生命。抵挡地震与海浪。', color: 'amber' },
   gun: { name: '枪', icon: '↗', cost: { energy: 1 }, target: true, attack: 1, description: '对一名目标造成 1 点伤害，攻击点数 1。', color: 'red' },
-  fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。两人存活时攻击点数 2，否则为 1。', color: 'orange' },
+  fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。提交招式时两人存活则攻击点数为 2，否则为 1；本回合不再变化。', color: 'orange' },
   angel: { name: '天使', icon: '♡', cost: { energy: 3 }, description: '恢复 1 点生命，没有生命上限。', color: 'pink' },
   quake: { name: '地震', icon: '⌁', cost: { energy: 4 }, attack: 3, description: '对所有其他存活玩家造成 2 点伤害，攻击点数 3。', color: 'amber' },
   darkAngel: { name: '黑天使', icon: '♜', cost: { energy: 5 }, target: true, attack: 4, description: '对一名目标造成 1 点伤害，自己恢复 1 生命。攻击点数 4，穿透圣盾。', color: 'violet' },
@@ -13,7 +13,7 @@ export const MOVES = Object.freeze({
   meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对使用圣盾或金盾者造成 1 伤害。亮招后可封锁任意一人的招式，资源照常消耗。', color: 'violet' },
 });
 
-export const REFLECTABLE = ['hammer', 'gun', 'fireball', 'quake', 'darkAngel', 'wave'];
+export const REFLECTABLE = ['gun', 'fireball', 'quake', 'darkAngel', 'wave'];
 export const RESOURCE_NAMES = { energy: '仔', hammers: '锤', shields: '圣盾' };
 
 export function validateAction(players, playerId, action) {
@@ -28,7 +28,12 @@ export function validateAction(players, playerId, action) {
     throw new Error('请选择另一名存活玩家作为目标。');
   }
   if (move.reflect && !REFLECTABLE.includes(action.reflect)) throw new Error('请选择金盾要反弹的攻击。');
-  return { move: action.move, ...(move.target ? { target: action.target } : {}), ...(move.reflect ? { reflect: action.reflect } : {}) };
+  return {
+    move: action.move,
+    ...(move.target ? { target: action.target } : {}),
+    ...(move.reflect ? { reflect: action.reflect } : {}),
+    ...(action.move === 'fireball' ? { power: players.filter(p => p.hp > 0).length === 2 ? 2 : 1 } : {}),
+  };
 }
 
 // Charge all costs before interrupts. Muting cancels effects, never the cost.
@@ -61,7 +66,9 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
     }
   }
   const activeAction = id => muted.has(id) ? null : actions[id];
-  const attackPower = action => action?.move === 'fireball' && alive.length === 2 ? 2 : MOVES[action?.move]?.attack ?? null;
+  const attackPower = action => action?.move === 'fireball'
+    ? action.power ?? (alive.length === 2 ? 2 : 1)
+    : MOVES[action?.move]?.attack ?? null;
 
   for (const p of alive) {
     const action = activeAction(p.id);

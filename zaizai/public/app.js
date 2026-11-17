@@ -20,6 +20,8 @@ let toastTimer;
 let audioContext;
 let inviteHandled = false;
 let rulesReady;
+let pollingStateKey;
+let deferredRender = false;
 const ui = {move:null,target:null,reflect:'gun',interruptTarget:null,busy:false,search:'',filter:'all',sound:localStorage.getItem('zaizai-sound')==='true'};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (name, size = 20) => {
@@ -86,15 +88,42 @@ function acceptState(next) {
     if(previous?.id!==next.room?.id) {ui.move=null;ui.target=null;}
     lastRound=key;
   }
-  state=next;self=next.self;timeOffset=next.serverTime-Date.now();render();
+  state=next;self=next.self;timeOffset=next.serverTime-Date.now();
+  if(document.activeElement?.matches('select'))deferredRender=true;
+  else {deferredRender=false;render();}
   maybeJoinInvite();
 }
 async function login(name) {
   const data=await api('/session',{name,token});
   token=data.token;self=data.self;moves=data.moves;reflectable=data.reflectable;resourceNames=data.resourceNames;
   sessionStorage.setItem('zaizai-token',token);
-  acceptState(await api('/state'));
-  events?.close();events=new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+  const usePolling = location.hostname.endsWith('.trycloudflare.com');
+  events?.close();
+  acceptState(await api(usePolling?'/state?poll=1':'/state'));
+  if (usePolling) {
+    pollingStateKey=JSON.stringify({self:state.self,room:state.room,rooms:state.rooms});
+    let closed=false, timer;
+    const controller=new AbortController();
+    events={close(){closed=true;clearTimeout(timer);controller.abort();}};
+    const poll=async()=>{
+      try {
+        const response=await fetch('/api/state?poll=1',{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.any([controller.signal,AbortSignal.timeout(10000)]),cache:'no-store'});
+        if(response.status===401){events.close();token=null;self=null;sessionStorage.removeItem('zaizai-token');render();return;}
+        if(!response.ok)throw new Error('State request failed');
+        const next=await response.json();
+        if(!closed){
+          timeOffset=next.serverTime-Date.now();
+          const key=JSON.stringify({self:next.self,room:next.room,rooms:next.rooms});
+          if(key!==pollingStateKey){pollingStateKey=key;acceptState(next);}
+          setConnection(true);
+        }
+      } catch(error) {if(!closed)setConnection(false);}
+      if(!closed)timer=setTimeout(poll,500);
+    };
+    poll();
+    return;
+  }
+  events=new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
   events.addEventListener('state',event=>{try{acceptState(JSON.parse(event.data));}catch(e){console.error(e);}});
   events.onopen=()=>setConnection(true);
   events.onerror=()=>setConnection(false);
@@ -124,8 +153,12 @@ function render() {
   const focused=document.activeElement;
   const focusId=focused?.id;const selectionStart=focused?.selectionStart;const selectionEnd=focused?.selectionEnd;
   const preserved=[...app.querySelectorAll('[data-preserve]')].map(el=>[el.id,el.value]);
+  if(state.room?.phase==='selecting'&&!state.room.ownAction&&meAlive(state.room)&&moves[ui.move]?.target){
+    const alive=state.room.players.filter(p=>p.hp>0&&!p.left);
+    if(alive.length===2)ui.target=alive.find(p=>p.id!==self.id).id;
+  }
   document.body.classList.toggle('in-room',!!self&&!!state.room);
-  app.innerHTML=!self?landing():state.room?roomPage(state.room):lobby();
+  app.innerHTML=!self?landing():state.room?arenaPage(state.room):lobby();
   for(const [id,value] of preserved){const el=document.getElementById(id);if(el)el.value=value;}
   if(focusId&&document.getElementById(focusId)&&app.contains(document.getElementById(focusId))){
     const el=document.getElementById(focusId);el.focus({preventScroll:true});
@@ -149,6 +182,15 @@ function roomCard(room,index){
   const playing=['selecting','interrupt','reveal'].includes(room.phase), full=room.count>=room.capacity;
   return `<article class="room-card"><div class="room-card-top"><span class="room-symbol" style="--room-color:${PALETTE[index%8]}">${['✳','◈','✹','⬡'][index%4]}</span><span class="status-pill ${playing?'playing':full?'full':''}"><i></i>${playing?'对局中':full?'已满员':'等待加入'}</span></div><h2>${esc(room.name)}</h2><p class="room-owner">${esc(room.hostName)} 的主场 <span>#${room.id}</span></p><div class="room-card-bottom"><span>${icon('users',17)} <b>${room.count}</b> / ${room.capacity}</span><button class="join-button" data-act="join" data-id="${room.id}" ${disabled(playing||full||ui.busy)}>${playing?`第 ${room.round} 回合`:full?'房间已满':'加入房间'} ${icon('arrow',16)}</button></div></article>`;
 }
+function arenaPage(room){
+  const me=room.players.find(p=>p.id===self.id);
+  const inGame=['selecting','interrupt','reveal'].includes(room.phase);
+  const alive=room.players.filter(p=>p.hp>0);
+  const host=room.hostId===self.id;
+  const phaseNames={waiting:'等待玩家',selecting:'秘密选招',interrupt:'流星锤封锁',reveal:'亮招 · 结算',finished:'本局结束'};
+  return `<div class="game-room"><div class="game-layout"><section class="battle-panel"><div class="battle-toolbar"><div class="battle-toolbar-main"><span class="battle-round"><i class="live-dot"></i> ${inGame?'ROUND '+String(room.round).padStart(2,'0'):'THE ARENA'} <b>/</b> ${inGame?alive.length+' 人存活':room.players.filter(p=>!p.left).length+' / '+room.capacity+' 人'} <small>${phaseNames[room.phase]}</small></span><span class="battle-instruction">${room.phase==='selecting'&&!room.ownAction&&me.hp>0?(alive.length===2?'选择招式 → 默认对手 → 锁定':'选择招式 → 点击目标 → 锁定'):room.phase==='interrupt'&&room.ownAction?.move==='meteor'?'点击头像选择封锁目标（包括自己）':'序号逆时针排列 · 自己始终在最下方'}</span></div><div class="battle-room-tools"><span class="battle-room-name" title="${esc(room.name)}">${esc(room.name)}</span>${!inGame&&host?'<select id="capacity-select" aria-label="调整房间人数" '+disabled(ui.busy)+'>'+Array.from({length:7},(_,i)=>i+2).map(n=>'<option value="'+n+'" '+(n===room.capacity?'selected':'')+' '+disabled(n>0&&n<room.players.filter(p=>!p.left).length)+'>'+n+' 人</option>').join('')+'</select>':''}<button class="icon-button" data-act="sound" title="${ui.sound?'关闭':'开启'}音效" aria-label="${ui.sound?'关闭':'开启'}音效">${icon(ui.sound?'sound':'mute')}</button><button class="icon-button" data-act="invite" title="邀请朋友" aria-label="邀请朋友">${icon('copy')}</button><button class="icon-button" data-act="leave" title="退出房间" aria-label="退出房间">${icon('exit')}</button></div></div><div class="arena ${room.phase==='reveal'&&room.result?.hasDamage?'arena-damage':''}"><button class="arena-panel-button" data-act="show-leaderboard">${icon('trophy',15)} 排行榜</button><button class="history-button" data-act="show-history">${icon('clock',15)} 战况记录</button><div class="arena-circle circle-outer"></div><div class="arena-circle circle-inner"></div><div class="arena-cross horizontal"></div><div class="arena-cross vertical"></div><span class="arena-wordmark">ZAIZAI / ARENA</span>${renderSeats(room,inGame)}<div class="arena-hud">${renderCenter(room,me)}</div><div class="arena-controls">${inGame?arsenal(room,me):`<div class="center-welcome"><span class="center-symbol">✳</span><h2>${room.phase==='finished'?'好戏，还可以再来一场':'人齐了，就开场'}</h2><p>所有在房玩家准备后自动开局</p><button class="${me.ready?'secondary-button prepared':'primary-button'}" data-act="ready" ${disabled(ui.busy)}>${icon(me.ready?'check':'arrow',16)} ${me.ready?'已准备 · 点击取消':'我准备好了'}</button></div>`}</div></div><div class="battle-caption"><span>↶ 序号从小到大 · 逆时针环绕</span><span>第 ${room.gameNumber||1} 局 · ${inGame?'第 '+room.round+' 回合':'全员准备自动开局'}</span><div class="battle-caption-actions"><button class="text-button" data-act="rules">全部招式 ${icon('arrow',12)}</button></div></div></section></div></div>`;
+}
+
 function roomPage(room){
   const me=room.players.find(p=>p.id===self.id);
   const inGame=['selecting','interrupt','reveal'].includes(room.phase);
@@ -220,7 +262,7 @@ function arsenal(room,me){
   const selectedMove=moves[ui.move],target=room.players.find(p=>p.id===ui.target);
   const valid=!!selectedMove&&(!selectedMove.target||target?.hp>0)&&(!selectedMove.reflect||ui.reflect);
   const available=Object.entries(moves).filter(([,move])=>Object.entries(move.cost).every(([key,n])=>me[key]>=n));
-  return '<section class="arsenal'+(available.length>6?' many-moves':'')+'"><div class="arsenal-heading"><h2>这一招，怎么出？</h2><span>仅显示可用招式</span></div><div class="moves-grid">'+available.map(([id,move])=>'<button class="move-card '+move.color+' '+(ui.move===id?'selected':'')+'" data-act="move" data-id="'+id+'" '+disabled(ui.busy)+' title="'+esc(move.description)+'" aria-pressed="'+(ui.move===id)+'"><span class="move-glyph">'+move.icon+'</span><strong>'+move.name+'</strong><span class="move-cost">'+costLabel(move)+'</span></button>').join('')+'</div><div class="selected-description">'+(selectedMove?esc(selectedMove.description):'30 秒选招，超时自动使用「仔」。')+'</div><div class="action-bar"><div class="action-detail">'+(selectedMove?'<strong>'+selectedMove.name+'</strong><span>'+(selectedMove.target?target?' → '+esc(target.name):'点击玩家选择目标':selectedMove.reflect?'选择反弹招式':'无需指定目标')+'</span>':'请选择一个招式')+'</div>'+(selectedMove?.reflect?'<select id="reflect-select" aria-label="金盾反弹招式">'+reflectable.map(id=>'<option value="'+id+'" '+(id===ui.reflect?'selected':'')+'>反弹 · '+moves[id].name+'</option>').join('')+'</select>':'')+'<button class="primary-button lock-button" data-act="submit-action" '+disabled(!valid||ui.busy)+'>'+icon('lock',13)+' 锁定招式</button></div></section>';
+  return '<section class="arsenal'+(available.length>6?' many-moves':'')+'"><div class="arsenal-heading"><h2>这一招，怎么出？</h2><span>仅显示可用招式</span></div><div class="moves-grid">'+available.map(([id,move])=>'<button class="move-card '+move.color+' '+(ui.move===id?'selected':'')+'" data-act="move" data-id="'+id+'" '+disabled(ui.busy)+' title="'+esc(move.description)+'" aria-pressed="'+(ui.move===id)+'"><span class="move-glyph">'+move.icon+'</span><strong>'+move.name+'</strong><span class="move-cost">'+costLabel(move)+'</span></button>').join('')+'</div><div class="selected-description">'+(selectedMove?esc(selectedMove.description):'30 秒选招，超时自动使用「仔」。')+'</div><div class="action-bar"><div class="action-detail">'+(selectedMove?'<strong>'+selectedMove.name+'</strong><span>'+(selectedMove.target?target?(room.players.filter(p=>p.hp>0&&!p.left).length===2?'默认目标 → ':' → ')+esc(target.name):'点击玩家选择目标':selectedMove.reflect?'选择反弹招式':'无需指定目标')+'</span>':'请选择一个招式')+'</div>'+(selectedMove?.reflect?'<select id="reflect-select" aria-label="金盾反弹招式">'+reflectable.map(id=>'<option value="'+id+'" '+(id===ui.reflect?'selected':'')+'>反弹 · '+moves[id].name+'</option>').join('')+'</select>':'')+'<button class="primary-button lock-button" data-act="submit-action" '+disabled(!valid||ui.busy)+'>'+icon('lock',13)+' 锁定招式</button></div></section>';
 }
 
 async function showRules(){
@@ -245,6 +287,8 @@ document.addEventListener('click',async event=>{
   const act=el.dataset.act,id=el.dataset.id;
   if(act==='close-modal')return dialog.close();
   if(act==='rules')return showRules();
+  if(act==='show-history')return openModal(`${modalHeader('ROUND HISTORY','战况记录')}${logPanel(state.room)}`,'wide');
+  if(act==='show-leaderboard')return openModal(`${modalHeader('ROOM RANKING','排行榜')}${leaderboardPanel(state.room)}`);
   if(act==='create')return showCreate();
   if(act==='join')return command('/rooms/join',{roomId:id});
   if(act==='filter'){ui.filter=el.dataset.value;render();return;}
@@ -293,6 +337,11 @@ document.addEventListener('input',event=>{if(event.target.id==='search'){ui.sear
 document.addEventListener('change',event=>{
   if(event.target.id==='capacity-select')command('/rooms/capacity',{capacity:Number(event.target.value)});
   if(event.target.id==='reflect-select'){ui.reflect=event.target.value;render();}
+});
+document.addEventListener('focusout',()=>{
+  if(deferredRender)setTimeout(()=>{
+    if(deferredRender&&!document.activeElement?.matches('select')){deferredRender=false;render();}
+  },0);
 });
 $('#rules-open').addEventListener('click',showRules);
 $('#user-button').addEventListener('click',()=>openModal(`${modalHeader('TEMPORARY IDENTITY','这一局，你是 '+esc(self.name))}<p class="modal-description">无需账号。昵称只用于对局展示，刷新页面可以重连。每个浏览器标签页使用独立的临时身份。</p><button class="secondary-button full-width" data-act="signout">${state.room?'退出房间并更换昵称':'更换临时昵称'} ${icon('arrow',17)}</button>`));

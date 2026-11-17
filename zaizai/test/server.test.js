@@ -118,3 +118,50 @@ test('联机服务：身份、权限、2–8 人房间、招式保密、阵亡�
   assert.ok(eightReveal.players.every(p=>p.energy===1));
   for (const player of eight) await player.request('/rooms/leave', {});
 });
+
+
+test('polling clients stay connected and can start and synchronize a match without SSE', { timeout: 10000 }, async t => {
+  const server = createServer();
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const tokens = [];
+  async function request(route, token, body) {
+    const response = await fetch(base + route, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    assert.equal(response.status, 200);
+    return response.json();
+  }
+  t.after(async () => {
+    for (const token of tokens) await request('/rooms/leave', token, {});
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  });
+  for (const name of ['Polling A', 'Polling B']) {
+    const client = await request('/session', null, { name });
+    tokens.push(client.token);
+    await request('/state?poll=1', client.token);
+  }
+  const [a, b] = tokens;
+  await request('/rooms/create', a, { capacity: 2 });
+  const roomId = (await request('/state?poll=1', a)).room.id;
+  await request('/rooms/join', b, { roomId });
+  const joined = await request('/state?poll=1', a);
+  assert.equal(joined.room.players.length, 2);
+  assert.ok(joined.room.players.every(player => player.connected));
+  await request('/rooms/ready', a, {});
+  assert.equal((await request('/state?poll=1', b)).room.players[0].ready, true);
+  await request('/rooms/ready', b, {});
+  assert.equal((await request('/state?poll=1', a)).room.phase, 'selecting');
+  await request('/game/action', a, { round: 1, move: 'charge' });
+  const secret = await request('/state?poll=1', b);
+  assert.equal(secret.room.actions, null);
+  assert.equal(secret.room.submitted.length, 1);
+  await request('/game/action', b, { round: 1, move: 'charge' });
+  const revealed = await request('/state?poll=1', a);
+  assert.equal(revealed.room.phase, 'reveal');
+  assert.ok(revealed.room.players.every(player => player.energy === 1));
+});

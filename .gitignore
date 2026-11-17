@@ -1,6 +1,16 @@
 # Machine-local Codex settings, at any depth
 .codex/
 /configure-codex-trust.py
+/.codex-repair/
+/AGENTS.md
+/codex-bigarm.cmd
+
+# Local backups
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+*~
 
 # Dependencies and package manager cache
 node_modules/

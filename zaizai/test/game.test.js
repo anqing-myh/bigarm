@@ -15,6 +15,7 @@ test('验证目标、资源、阵亡和反弹类型，拒绝非法输入', () =>
   assert.throws(() => validateAction(players, 'a', act('hammer', 'c')), /目标/);
   assert.throws(() => validateAction(players, 'c', act('charge')), /阵亡/);
   assert.throws(() => validateAction(players, 'b', act('gold', null, 'meteor')), /反弹/);
+  assert.throws(() => validateAction(players, 'b', act('gold', null, 'hammer')), /.+/);
   assert.throws(() => validateAction(players, 'b', act('__proto__')), /有效/);
   assert.deepEqual(validateAction(players, 'a', { move: 'charge', target: 'b', malicious: 1 }), { move: 'charge' });
 });
@@ -114,4 +115,18 @@ test('结算不修改传入数据', () => {
 test('目标在锁定后弃权，不导致火球结算崩溃或攻击错误玩家', () => {
   const r=battle([p('a'),p('b',{hp:0,left:true}),p('c')],{a:act('fireball','b'),b:act('charge'),c:act('charge')});
   assert.equal(get(r,'a').energy,8);assert.equal(get(r,'a').hp,1);assert.equal(get(r,'c').hp,1);assert.equal(r.hasDamage,false);
+});
+
+
+test('fireball power is fixed when an action is submitted', () => {
+  const players = [p('a', { hp: 5 }), p('b'), p('c', { hp: 5 })];
+  const fireball = validateAction(players, 'a', act('fireball', 'c'));
+  assert.equal(fireball.power, 1);
+  const remaining = [players[0], { ...players[1], hp: 0, left: true }, players[2]];
+  const result = battle(remaining, { a: fireball, c: act('quake') });
+  assert.equal(get(result, 'a').hp, 3);
+  assert.equal(get(result, 'c').hp, 5);
+
+  const duel = [p('a'), p('b')];
+  assert.equal(validateAction(duel, 'a', act('fireball', 'b')).power, 2);
 });

@@ -11,7 +11,7 @@ const INTERRUPT_MS = Number(process.env.INTERRUPT_MS) || 12000;
 const DISCONNECT_MS = Number(process.env.DISCONNECT_MS) || 60000;
 const sessions = new Map();
 const rooms = new Map();
-const allowedFiles = new Set(['index.html', 'app.js', 'styles.css']);
+const allowedFiles = new Set(['index.html', 'app.js', 'styles.css', 'arena-layout.css']);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 const now = () => Date.now();
 const fail = message => { throw new Error(message); };
@@ -48,6 +48,29 @@ function sendState(session) {
   send(session, 'state', { self: { id: session.id, name: session.name }, room: room ? roomView(room, session) : null, rooms: lobbyView(), serverTime: now() });
 }
 function broadcast() { for (const s of sessions.values()) if (s.streams.size) sendState(s); }
+// Quick tunnels buffer SSE; polling clients renew their presence with each state request.
+function renewPollingPresence(session) {
+  session.pollUntil = now() + DISCONNECT_MS;
+  clearTimeout(session.pollTimer);
+  clearTimeout(session.disconnectTimer);
+  const room = rooms.get(session.roomId);
+  const player = room?.players.find(p => p.id === session.id && !p.left);
+  const reconnected = player && !player.connected;
+  if (player) player.connected = true;
+  session.pollTimer = setTimeout(() => {
+    if (session.streams.size) return;
+    const current = rooms.get(session.roomId)?.players.find(p => p.id === session.id);
+    if (current) { current.connected = false; current.ready = false; }
+    leaveRoom(session);
+    broadcast();
+  }, DISCONNECT_MS);
+  session.pollTimer.unref?.();
+  if (reconnected) {
+    if (room && !inGame(room)) maybeStart(room);
+    broadcast();
+  }
+}
+
 function setTimer(room, duration, callback) {
   clearTimeout(room.timer);
   room.deadline = now() + duration;
@@ -131,7 +154,7 @@ function maybeStart(room) {
   room.round = 0;
   beginRound(room);
 }
-function makePlayer(session, seat) { return { id: session.id, name: session.name, seat, connected: session.streams.size > 0, ready: false, hp: 1, energy: 0, hammers: 0, shields: 0, left: false }; }
+function makePlayer(session, seat) { return { id: session.id, name: session.name, seat, connected: session.streams.size > 0 || session.pollUntil > now(), ready: false, hp: 1, energy: 0, hammers: 0, shields: 0, left: false }; }
 function leaveRoom(session) {
   const room = rooms.get(session.roomId);
   session.roomId = null;
@@ -214,7 +237,7 @@ export function createServer() {
           req.on('close', () => {
             clearInterval(heartbeat);
             session.streams.delete(res);
-            if (!session.streams.size) {
+            if (!session.streams.size && !(session.pollUntil > now())) {
               const current = rooms.get(session.roomId)?.players.find(p => p.id === session.id);
               if (current) { current.connected = false; current.ready = false; }
               session.disconnectTimer = setTimeout(() => { if (!session.streams.size) { leaveRoom(session); broadcast(); } }, DISCONNECT_MS);
@@ -225,6 +248,7 @@ export function createServer() {
           return;
         }
         if (req.method === 'GET' && url.pathname === '/api/state') {
+          if (url.searchParams.get('poll') === '1') renewPollingPresence(session);
           const room = rooms.get(session.roomId);
           return json(res, 200, { self: { id: session.id, name: session.name }, room: room ? roomView(room, session) : null, rooms: lobbyView(), serverTime: now() });
         }
