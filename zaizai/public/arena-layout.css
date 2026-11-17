@@ -94,3 +94,35 @@ dialog .battle-log .log-content{max-height:min(52dvh,480px)}
   .game-room .arena>.arena-panel-button{top:6px;left:6px;min-height:30px;padding:5px 7px;font-size:9px}
   .game-room .arena>.history-button{right:6px;bottom:6px}
 }
+
+/* Keep round progress directly underneath the local player's seat. */
+.game-room .battle-caption{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+.game-room .battle-caption>.match-progress{grid-column:2;justify-self:center;white-space:nowrap}
+.game-room .battle-caption-actions{grid-column:3;justify-self:end}
+
+/* Spend the space saved by removing selection hints on legible move buttons. */
+.game-room .arena-controls .arsenal .moves-grid>.move-card{min-height:54px;padding:7px 8px}
+.game-room .arena-controls .arsenal .moves-grid>.move-card>strong{font-size:15px}
+.game-room .arena-controls .arsenal .moves-grid>.move-card .move-glyph{font-size:24px}
+.game-room .arena-controls .arsenal .move-cost{font-size:10px}
+.game-room .arena-controls .many-moves .moves-grid>.move-card{min-height:44px;padding:6px}
+.game-room .arena-controls .many-moves .moves-grid>.move-card>strong{font-size:13px}
+.game-room .arena-controls .many-moves .moves-grid>.move-card .move-glyph{font-size:18px}
+.game-room .arena-controls .arsenal .action-bar{display:flex;gap:8px;align-items:center;margin-top:10px;padding-top:10px}
+.game-room .arena-controls .arsenal .lock-button{flex:1;min-height:37px;width:auto;font-size:12px}
+.game-room .arena-controls .arsenal #reflect-select{flex:1;min-width:0;width:50%;height:37px;font-size:11px;order:0}
+
+@media(max-width:600px){
+  .game-room .arena-controls .arsenal .moves-grid>.move-card{min-height:46px;padding:5px 3px}
+  .game-room .arena-controls .arsenal .moves-grid>.move-card>strong{font-size:12px}
+  .game-room .arena-controls .arsenal .moves-grid>.move-card .move-glyph{font-size:17px}
+  .game-room .arena-controls .arsenal .move-cost{font-size:8px}
+  .game-room .arena-controls .many-moves .moves-grid>.move-card{min-height:42px}
+  .game-room .arena-controls .many-moves .moves-grid>.move-card>strong{font-size:11px}
+  .game-room .arena-controls .moves-grid:has(>.move-card:nth-child(13)){grid-template-columns:repeat(5,minmax(0,1fr))}
+  .game-room .arena-controls .moves-grid:has(>.move-card:nth-child(13))>.move-card{min-height:40px;padding-inline:2px}
+  .game-room .arena-controls .moves-grid:has(>.move-card:nth-child(13))>.move-card>strong{font-size:10px}
+  .game-room .arena-controls .arsenal .action-bar{gap:5px;margin-top:7px;padding-top:7px}
+  .game-room .arena-controls .arsenal .lock-button{min-height:34px;font-size:11px;padding:6px}
+  .game-room .arena-controls .arsenal #reflect-select{height:34px;font-size:9px;padding:4px}
+}

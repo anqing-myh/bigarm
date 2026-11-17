@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MOVES, validateAction, payCosts, resolveRound } from '../server/game.js';
+import { MOVES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction } from '../server/game.js';
 
 const p = (id, options = {}) => ({ id, name: id.toUpperCase(), hp: 1, energy: 10, hammers: 3, shields: 3, seat: id.charCodeAt(0)-97, ...options });
 const act = (move, target, reflect) => ({ move, ...(target ? { target } : {}), ...(reflect ? { reflect } : {}) });
 const battle = (players, actions, interrupts) => resolveRound(payCosts(players, actions), actions, interrupts);
 const get = (result, id) => result.players.find(p => p.id === id);
 
-test('文档中 12 种招式均已定义', () => { assert.equal(Object.keys(MOVES).length, 12); });
+test('文档中 13 种招式均已定义', () => { assert.equal(Object.keys(MOVES).length, 13); });
 test('验证目标、资源、阵亡和反弹类型，拒绝非法输入', () => {
   const players = [p('a', { energy: 0 }), p('b'), p('c', { hp: 0 })];
   assert.throws(() => validateAction(players, 'a', act('gun', 'b')), /不足/);
@@ -129,4 +129,82 @@ test('fireball power is fixed when an action is submitted', () => {
 
   const duel = [p('a'), p('b')];
   assert.equal(validateAction(duel, 'a', act('fireball', 'b')).power, 2);
+});
+
+
+test('防记录独立资源；雪崩必须有 3 个防并准确消耗', () => {
+  const players=[p('a',{guards:2}),p('b')];
+  assert.throws(()=>validateAction(players,'a',act('avalanche')),/防不足/);
+  assert.throws(()=>validateAction([p('a',{guards:undefined}),p('b')],'a',act('avalanche')),/防不足/);
+  const guarded=battle(players,{a:act('guard'),b:act('guard')});
+  assert.equal(get(guarded,'a').guards,3);
+  assert.equal(guarded.changes.a.guards,1);
+  const action=validateAction(guarded.players,'a',act('avalanche'));
+  const result=battle(guarded.players,{a:action,b:act('charge')});
+  assert.equal(get(result,'a').guards,0);
+  assert.equal(get(result,'b').energy,11,'施放本回合仍正常执行仔');
+  assert.equal(get(result,'b').bannedMove,undefined,'结算不提前应用下一回合限制');
+  assert.deepEqual(result.avalanche.bans,{a:'guard',b:'charge'});
+});
+
+test('雪崩禁招由服务器验证；新雪崩整体覆盖旧禁招，未施放时持续保留', () => {
+  const first=battle([p('a',{guards:3}),p('b',{guards:3}),p('c')],{a:act('avalanche'),b:act('charge'),c:act('holy')});
+  const restricted=applyAvalanche(first.players,first.avalanche);
+  assert.throws(()=>validateAction(restricted,'a',act('guard')),/雪崩/);
+  assert.throws(()=>validateAction(restricted,'b',act('charge')),/雪崩/);
+  assert.throws(()=>validateAction(restricted,'c',act('holy')),/雪崩/);
+  const ordinary=battle(restricted,{a:act('charge'),b:act('guard'),c:act('charge')});
+  assert.equal(ordinary.avalanche,null);
+  assert.deepEqual(ordinary.players.map(p=>p.bannedMove),['guard','charge','holy']);
+  const second=battle(ordinary.players,{a:act('charge'),b:act('avalanche'),c:act('guard')});
+  const replaced=applyAvalanche(second.players,second.avalanche);
+  assert.deepEqual(replaced.map(p=>p.bannedMove),['charge','guard','guard']);
+  assert.equal(validateAction(replaced,'a',act('guard')).move,'guard');
+  assert.equal(validateAction(replaced,'b',act('charge')).move,'charge');
+  assert.equal(validateAction(replaced,'c',act('holy')).move,'holy');
+  assert.deepEqual(restricted.map(p=>p.bannedMove),['guard','charge','holy'],'不修改旧快照');
+});
+
+test('流星锤封锁雪崩：资源照扣但不覆盖；封锁防不积累防', () => {
+  const r=battle([p('a',{guards:3,bannedMove:'gun'}),p('b'),p('c',{guards:1})],{a:act('avalanche'),b:act('meteor'),c:act('guard')},{b:'a'});
+  assert.equal(get(r,'a').guards,0);assert.equal(r.avalanche,null);
+  assert.equal(get(r,'a').bannedMove,'gun');
+  assert.equal(get(r,'c').guards,2);
+  const mutedGuard=battle([p('a'),p('b',{guards:1})],{a:act('meteor'),b:act('guard')},{a:'b'});
+  assert.equal(get(mutedGuard,'b').guards,1);
+  assert.equal(mutedGuard.changes.b.guards,0);
+});
+
+test('雪崩记录其他玩家宣告招式，即使该招式被封锁', () => {
+  const r=battle([p('a',{guards:3}),p('b'),p('c')],{a:act('avalanche'),b:act('charge'),c:act('meteor')},{c:'b'});
+  assert.deepEqual(r.avalanche.bans,{a:'guard',b:'charge',c:'meteor'});
+  assert.equal(get(r,'b').energy,10);
+});
+
+test('多个雪崩同时覆盖，施放顺序不会改变结果', () => {
+  const players=[p('a',{guards:3}),p('b',{guards:3}),p('c')];
+  const actions={a:act('avalanche'),b:act('avalanche'),c:act('charge')};
+  const first=battle(players,actions),second=battle([...players].reverse(),actions);
+  assert.deepEqual(first.avalanche.bans,{a:'guard',b:'guard',c:'charge'});
+  assert.deepEqual(first.avalanche.bans,second.avalanche.bans);
+  assert.equal(get(first,'a').guards,0);assert.equal(get(first,'b').guards,0);
+});
+
+test('雪崩施放者同时阵亡仍施加限制；防被锤击阵亡仍积累防', () => {
+  const r=battle([p('a',{guards:3}),p('b'),p('c')],{a:act('avalanche'),b:act('gun','a'),c:act('charge')});
+  assert.equal(get(r,'a').hp,0);
+  assert.deepEqual(r.avalanche.bans,{a:'guard',b:'gun',c:'charge'});
+  const guarded=battle([p('a',{energy:0,guards:2}),p('b')],{a:act('guard'),b:act('hammer','a')});
+  assert.equal(get(guarded,'a').hp,0);assert.equal(get(guarded,'a').guards,3);
+});
+
+test('超时自动行动始终遵守雪崩限制，仔被禁时改用防', () => {
+  for(const bannedMove of [null,...Object.keys(MOVES)]){
+    const players=[p('a',{energy:0,guards:0,bannedMove}),p('b')];
+    const action=automaticAction(players,'a');
+    assert.equal(action.move,bannedMove==='charge'?'guard':'charge');
+    assert.notEqual(action.move,bannedMove);
+    assert.equal(action.automatic,true);
+    assert.equal(validateAction(players,'a',action).move,action.move);
+  }
 });

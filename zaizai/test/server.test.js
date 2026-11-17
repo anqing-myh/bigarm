@@ -165,3 +165,72 @@ test('polling clients stay connected and can start and synchronize a match witho
   assert.equal(revealed.room.phase, 'reveal');
   assert.ok(revealed.room.players.every(player => player.energy === 1));
 });
+
+
+test('雪崩联机：下一回合禁招、覆盖、持久化、施放者离房和新局清空', { timeout: 40000 }, async t => {
+  const server=createServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  const base='http://127.0.0.1:'+server.address().port+'/api',clients=[];
+  async function request(route,token,body,status=200){
+    const response=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+    const data=await response.json();assert.equal(response.status,status,JSON.stringify(data));return data;
+  }
+  t.after(async()=>{
+    for(const c of clients)await request('/rooms/leave',c.token,{});
+    server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
+  });
+  for(const name of ['雪崩甲','雪崩乙','雪崩丙']){
+    const client=await request('/session',null,{name});clients.push(client);
+    await request('/state?poll=1',client.token);
+  }
+  const [a,b,c]=clients;
+  const state=async client=>(await request('/state?poll=1',client.token)).room;
+  const post=(client,route,body={},status=200)=>request(route,client.token,body,status);
+  const player=(room,client)=>room.players.find(p=>p.id===client.self.id);
+  async function selecting(round){
+    const deadline=Date.now()+6500;
+    while(Date.now()<deadline){const room=await state(a);if(room.phase==='selecting'&&room.round===round)return room;await delay(30);}
+    throw Error('雪崩测试等待回合超时 '+round);
+  }
+  async function turn(round,moves){
+    await selecting(round);
+    for(const [i,move] of moves.entries())await post(clients[i],'/game/action',{round,move});
+    return state(a);
+  }
+  await post(a,'/rooms/create',{capacity:3});const roomId=(await state(a)).id;
+  await post(b,'/rooms/join',{roomId});await post(c,'/rooms/join',{roomId});
+  for(const client of clients)await post(client,'/rooms/ready');
+  assert.ok((await state(a)).players.every(p=>p.guards===0&&p.bannedMove===null));
+  for(let round=1;round<=3;round++){
+    const room=await turn(round,['guard','guard','guard']);
+    assert.ok(room.players.every(p=>p.guards===round));
+  }
+  let room=await turn(4,['avalanche','charge','guard']);
+  assert.equal(player(room,a).guards,0);assert.equal(player(room,b).energy,1);
+  assert.ok(room.players.every(p=>p.bannedMove===null),'展示阶段本回合不提前禁招');
+  assert.ok(room.history[0].logs.some(l=>l.type==='avalanche'));
+  room=await selecting(5);
+  assert.deepEqual(room.players.map(p=>p.bannedMove),['guard','charge','guard']);
+  await post(a,'/game/action',{round:5,move:'guard'},400);
+  await post(b,'/game/action',{round:5,move:'charge'},400);
+  room=await turn(5,['charge','guard','avalanche']);
+  assert.equal(player(room,b).guards,4);
+  assert.equal(player(room,c).guards,1);
+  assert.deepEqual(room.players.map(p=>p.bannedMove),['guard','charge','guard'],'覆盖也从下一回合开始');
+  room=await selecting(6);
+  assert.deepEqual(room.players.map(p=>p.bannedMove),['charge','guard','guard']);
+  await post(b,'/game/action',{round:6,move:'guard'},400);
+  room=await turn(6,['guard','charge','charge']);
+  room=await selecting(7);
+  assert.deepEqual(room.players.map(p=>p.bannedMove),['charge','guard','guard'],'没有新雪崩则持续生效');
+  await post(c,'/rooms/leave');
+  room=await state(a);
+  assert.equal(player(room,a).bannedMove,'charge','施放者离房后限制仍在');
+  assert.equal(player(room,b).bannedMove,'guard');
+  await post(a,'/game/action',{round:7,move:'hammer',target:b.self.id});
+  await post(b,'/game/action',{round:7,move:'gun',target:a.self.id});
+  const deadline=Date.now()+6500;
+  while((await state(a)).phase!=='finished'){assert.ok(Date.now()<deadline);await delay(30);}
+  await post(a,'/rooms/ready');await post(b,'/rooms/ready');
+  room=await state(a);assert.equal(room.gameNumber,2);assert.equal(room.round,1);
+  assert.ok(room.players.every(p=>p.guards===0&&p.bannedMove===null&&p.energy===0));
+});

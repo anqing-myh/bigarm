@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { MOVES, REFLECTABLE, RESOURCE_NAMES, validateAction, payCosts, resolveRound } from './game.js';
+import { MOVES, REFLECTABLE, RESOURCE_NAMES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction } from './game.js';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const SELECTION_MS = Number(process.env.SELECTION_MS) || 30000;
@@ -17,7 +17,7 @@ const now = () => Date.now();
 const fail = message => { throw new Error(message); };
 const activeMembers = room => room.players.filter(p => !p.left);
 const inGame = room => ['selecting', 'interrupt', 'reveal'].includes(room.phase);
-const playerView = p => ({ id: p.id, name: p.name, seat: p.seat, connected: p.connected, ready: p.ready, hp: p.hp, energy: p.energy, hammers: p.hammers, shields: p.shields, left: !!p.left });
+const playerView = p => ({ id: p.id, name: p.name, seat: p.seat, connected: p.connected, ready: p.ready, hp: p.hp, energy: p.energy, hammers: p.hammers, shields: p.shields, guards: p.guards, bannedMove: p.bannedMove, left: !!p.left });
 
 function roomView(room, session) {
   const visible = ['interrupt', 'reveal', 'finished'].includes(room.phase);
@@ -106,6 +106,7 @@ function settle(room) {
   clearTimeout(room.timer);
   const result = resolveRound(room.players, room.actions, room.interrupts);
   room.players = result.players;
+  if (result.avalanche) room.pendingAvalanche = result.avalanche;
   room.result = { ...result, players: undefined, round: room.round, actions: { ...room.actions } };
   if (result.finished) {
     const locked = lockMatch(room, room.result);
@@ -134,13 +135,17 @@ function reveal(room) {
   } else settle(room);
 }
 function beginRound(room) {
+  if (room.pendingAvalanche) {
+    room.players = applyAvalanche(room.players, room.pendingAvalanche);
+    room.pendingAvalanche = null;
+  }
   room.round++;
   room.actions = {};
   room.interrupts = {};
   room.result = null;
   setPhase(room, 'selecting');
   setTimer(room, SELECTION_MS, () => {
-    for (const p of room.players) if (p.hp > 0 && !room.actions[p.id]) room.actions[p.id] = { move: 'charge', automatic: true };
+    for (const p of room.players) if (p.hp > 0 && !room.actions[p.id]) room.actions[p.id] = automaticAction(room.players, p.id);
     reveal(room);
   });
   broadcast();
@@ -149,12 +154,13 @@ function maybeStart(room) {
   const members = activeMembers(room);
   if (members.length < 2 || !members.every(p => p.ready && p.connected)) return;
   clearTimeout(room.timer);
-  room.players = members.sort((a, b) => a.seat - b.seat).map(p => ({ ...p, hp: 1, energy: 0, hammers: 0, shields: 0, ready: false, left: false }));
+  room.players = members.sort((a, b) => a.seat - b.seat).map(p => ({ ...p, hp: 1, energy: 0, hammers: 0, shields: 0, guards: 0, bannedMove: null, ready: false, left: false }));
+  room.pendingAvalanche = null;
   room.gameNumber++;
   room.round = 0;
   beginRound(room);
 }
-function makePlayer(session, seat) { return { id: session.id, name: session.name, seat, connected: session.streams.size > 0 || session.pollUntil > now(), ready: false, hp: 1, energy: 0, hammers: 0, shields: 0, left: false }; }
+function makePlayer(session, seat) { return { id: session.id, name: session.name, seat, connected: session.streams.size > 0 || session.pollUntil > now(), ready: false, hp: 1, energy: 0, hammers: 0, shields: 0, guards: 0, bannedMove: null, left: false }; }
 function leaveRoom(session) {
   const room = rooms.get(session.roomId);
   session.roomId = null;

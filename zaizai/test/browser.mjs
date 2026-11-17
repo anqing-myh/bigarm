@@ -34,6 +34,16 @@ async function checkArenaCorners(page){
   });
   assert.deepEqual(corners,[true,true],'排行榜与战况按钮直接位于战场内部左上角和右下角');
 }
+
+async function checkArenaFooter(page){
+  const centers=await page.evaluate(()=>{
+    const label=document.querySelector('.match-progress').getBoundingClientRect();
+    const me=document.querySelector('.seat.is-me').getBoundingClientRect();
+    return {label:label.left+label.width/2,me:me.left+me.width/2};
+  });
+  assert.ok(Math.abs(centers.label-centers.me)<1,'局数与回合数位于己方角色正下方');
+}
+
 async function checkPlayViewport(page){
   const result=await page.evaluate(()=>{const rect=s=>document.querySelector(s).getBoundingClientRect();const arena=rect('.battle-panel'),controls=rect('.arsenal');return {arenaVisible:arena.top>=0&&arena.bottom<=innerHeight,controlsVisible:controls.top>=0&&controls.bottom<=innerHeight,inside:controls.left>=arena.left&&controls.right<=arena.right&&controls.top>=arena.top&&controls.bottom<=arena.bottom};});
   assert.ok(result.arenaVisible&&result.controlsVisible&&result.inside,'环形战场与中央可用招式完整同屏，无需滚动');
@@ -60,7 +70,7 @@ try {
   await a.getByRole('heading', { name: /蓄一手/ }).waitFor();
   await a.locator('#rules-open').click();
   await a.locator('#modal .rule-move').last().waitFor();
-  assert.equal(await a.locator('#modal .rule-move').count(),12,'未登录也能查看全部 12 个招式');
+  assert.equal(await a.locator('#modal .rule-move').count(),13,'未登录也能查看全部 13 个招式');
   await a.locator('[data-act=close-modal]').click();
   await screenshot(a, '01-welcome-desktop');
   await a.setViewportSize({ width: 390, height: 844 });
@@ -89,10 +99,10 @@ try {
   await a.waitForTimeout(150);
   assert.equal((await info(b)).room.capacity, 8);
   for(const page of pages){await checkRing(page,3);assert.equal(await page.locator('.not-ready-bubble').count(),3);}
-  await checkArenaCorners(a);
+  await checkArenaCorners(a);await checkArenaFooter(a);
   await screenshot(a, '04-room-waiting');
   await a.setViewportSize({ width: 390, height: 844 });
-  await checkArenaCorners(a);
+  await checkArenaCorners(a);await checkArenaFooter(a);
   await screenshot(a, '05-room-mobile');
   assert.equal(await a.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, '手机房间没有横向溢出');
   await a.setViewportSize({ width: 1440, height: 1050 });
@@ -108,10 +118,18 @@ try {
   assert.equal(await a.locator('.move-card').count(),3,'初始只显示仔、防、锤三种可用招式');
   assert.equal(await a.locator('.log-tabs').count(),0,'战报不再区分本回合和历史标签');
   await a.setViewportSize({width:1366,height:768});await checkPlayViewport(a);await screenshot(a,'12-compact-desktop');
-  // Layout stress: all 12 moves available and eight seats, without mutating the server.
+  // Layout stress: all 13 moves available and eight seats, without mutating the server.
   const savedRoom=await a.evaluate(()=>structuredClone(state.room));
-  await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);Object.assign(me,{energy:20,hammers:6,shields:6});while(state.room.players.length<8){const i=state.room.players.length;state.room.players.push({...me,id:'layout-'+i,name:'玩家'+(i+1),seat:i});}render();});
-  assert.equal(await a.locator('.move-card').count(),12);await checkPlayViewport(a);await checkRing(a,8);
+  await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);Object.assign(me,{energy:20,hammers:6,shields:6,guards:6});while(state.room.players.length<8){const i=state.room.players.length;state.room.players.push({...me,id:'layout-'+i,name:'玩家'+(i+1),seat:i});}render();});
+  assert.equal(await a.locator('.move-card').count(),13);await checkPlayViewport(a);await checkRing(a,8);
+
+  assert.ok((await a.locator('.seat-detail').allTextContents()).every(text=>!/[⚒⬡◇]/u.test(text)),'头像状态不展示锤、圣盾、防');
+  await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);me.bannedMove='charge';ui.move='charge';render();});
+  assert.equal(await a.locator('[data-act=move][data-id=charge]').count(),0,'雪崩禁招从可选列表移除');
+  assert.equal(await a.locator('[data-act=submit-action]').isDisabled(),true,'禁招不能保留为待提交选择');
+  assert.equal(await a.locator('.arsenal-heading,.selected-description,.action-detail').count(),0,'选招区只保留招式和锁定控件');
+  await a.evaluate(()=>{state.room.players.find(p=>p.id===self.id).bannedMove=null;render();});
+
   await screenshot(a,'15-eight-players-all-moves');
   for(const id of await a.locator('.move-card').evaluateAll(els=>els.map(el=>el.dataset.id))){
     await a.evaluate(id=>{ui.move=id;render();},id);
@@ -123,7 +141,7 @@ try {
   await a.setViewportSize({width:390,height:844});await checkPlayViewport(a);
   await screenshot(a,'16-eight-players-mobile');
   const overlaps=await a.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat]')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.dataset.seat);});
-  assert.deepEqual(overlaps,[],'手机上 12 种招式与 8 名玩家头像不重叠');
+  assert.deepEqual(overlaps,[],'手机上 13 种招式与 8 名玩家头像不重叠');
   for(const id of await a.locator('.move-card').evaluateAll(els=>els.map(el=>el.dataset.id))){
     await a.evaluate(id=>{ui.move=id;ui.target=null;render();},id);
     await checkPlayViewport(a);
@@ -131,8 +149,8 @@ try {
     if(intersecting.length)await screenshot(a,'layout-failure-'+id);
     assert.deepEqual(intersecting,[],'Selecting '+id+' keeps all avatars clear');
   }
-  for(const [energy,hammers,shields] of [[0,0,0],[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[5,3,0]]){
-    await a.evaluate(({energy,hammers,shields})=>{Object.assign(state.room.players.find(p=>p.id===self.id),{energy,hammers,shields});ui.move=null;render();},{energy,hammers,shields});
+  for(const [energy,hammers,shields,guards] of [[0,0,0,0],[1,0,0,0],[2,0,0,0],[3,0,0,0],[4,0,0,0],[5,0,0,0],[5,3,0,0],[0,0,0,3]]){
+    await a.evaluate(({energy,hammers,shields,guards})=>{Object.assign(state.room.players.find(p=>p.id===self.id),{energy,hammers,shields,guards});ui.move=null;render();},{energy,hammers,shields,guards});
     for(const id of await a.locator('.move-card').evaluateAll(els=>els.map(el=>el.dataset.id))){
       await a.evaluate(id=>{ui.move=id;render();},id);
       await checkPlayViewport(a);
@@ -212,7 +230,7 @@ try {
   await screenshot(b,'13-rematch-readiness');
   await b.locator('.arena-controls [data-act=ready]').click();await c.locator('.arena-controls [data-act=ready]').click();
   await waitPhase(a,'selecting',1);
-  assert.ok((await info(a)).room.players.every(p=>p.hp===1&&p.energy===0&&p.shields===0&&p.hammers===0));
+  assert.ok((await info(a)).room.players.every(p=>p.hp===1&&p.energy===0&&p.shields===0&&p.hammers===0&&p.guards===0&&p.bannedMove===null));
   assert.equal((await info(c)).room.leaderboard.find(p=>p.id===idA).wins,1,'重新开局保留胜场');
   for(const page of [a,b])await page.evaluate(async()=>{await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+sessionStorage.getItem('zaizai-token')},body:'{}'});});
   await waitPhase(c,'finished');
@@ -227,7 +245,7 @@ try {
   await a.locator('#modal [data-act=close-modal]').click();
   await screenshot(a,'14-locked-winner-left');
   assert.deepEqual(errors,[],'浏览器无 JavaScript 或资源错误');
-  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 12 招式布局','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变'],screenshots:16,errors},null,2));
+  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 13 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变'],screenshots:16,errors},null,2));
 } finally {
   for(const page of pages) {
     try { await page.evaluate(async()=>{const token=sessionStorage.getItem('zaizai-token');if(token)await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}'});}); } catch {}

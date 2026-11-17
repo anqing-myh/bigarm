@@ -1,6 +1,6 @@
 export const MOVES = Object.freeze({
   charge: { name: '仔', icon: '✦', cost: {}, description: '积蓄力量，获得 1 个仔。', color: 'mint' },
-  guard: { name: '防', icon: '◇', cost: {}, description: '抵挡本回合的枪与火球。', color: 'blue' },
+  guard: { name: '防', icon: '◇', cost: {}, description: '抵挡本回合的枪与火球，并获得 1 个防。', color: 'blue' },
   hammer: { name: '锤', icon: '⚒', cost: {}, target: true, description: '获得 1 个锤；敲击使用防的目标：有仔扣 1 仔，无仔扣 1 生命。抵挡地震与海浪。', color: 'amber' },
   gun: { name: '枪', icon: '↗', cost: { energy: 1 }, target: true, attack: 1, description: '对一名目标造成 1 点伤害，攻击点数 1。', color: 'red' },
   fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。提交招式时两人存活则攻击点数为 2，否则为 1；本回合不再变化。', color: 'orange' },
@@ -11,18 +11,20 @@ export const MOVES = Object.freeze({
   gold: { name: '金盾', icon: '◈', cost: { energy: 1 }, reflect: true, description: '预判一种攻击，反弹本回合命中自己的该类攻击。不能反弹流星锤。', color: 'amber' },
   wave: { name: '海浪', icon: '≋', cost: { shields: 3 }, attack: 3, description: '对所有其他存活玩家造成 1 点伤害，反弹火球。攻击点数 3。', color: 'cyan' },
   meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对使用圣盾或金盾者造成 1 伤害。亮招后可封锁任意一人的招式，资源照常消耗。', color: 'violet' },
+  avalanche: { name: '雪崩', icon: '❄', cost: { guards: 3 }, description: '从下回合起，自己禁用防，其他玩家各自禁用本回合所选招式，直到新的雪崩覆盖限制。', color: 'cyan' },
 });
 
 export const REFLECTABLE = ['gun', 'fireball', 'quake', 'darkAngel', 'wave'];
-export const RESOURCE_NAMES = { energy: '仔', hammers: '锤', shields: '圣盾' };
+export const RESOURCE_NAMES = { energy: '仔', hammers: '锤', shields: '圣盾', guards: '防' };
 
 export function validateAction(players, playerId, action) {
   const player = players.find(p => p.id === playerId);
   if (!player || player.hp <= 0) throw new Error('你已阵亡，正在观战。');
   if (!action || !Object.hasOwn(MOVES, action.move)) throw new Error('请选择有效招式。');
+  if (player.bannedMove === action.move) throw new Error('雪崩限制：不能使用「' + MOVES[action.move].name + '」。');
   const move = MOVES[action.move];
   for (const [resource, cost] of Object.entries(move.cost)) {
-    if (player[resource] < cost) throw new Error(`${RESOURCE_NAMES[resource]}不足。`);
+    if ((player[resource] ?? 0) < cost) throw new Error(`${RESOURCE_NAMES[resource]}不足。`);
   }
   if (move.target && !players.some(p => p.id === action.target && p.hp > 0 && p.id !== playerId)) {
     throw new Error('请选择另一名存活玩家作为目标。');
@@ -34,6 +36,16 @@ export function validateAction(players, playerId, action) {
     ...(move.reflect ? { reflect: action.reflect } : {}),
     ...(action.move === 'fireball' ? { power: players.filter(p => p.hp > 0).length === 2 ? 2 : 1 } : {}),
   };
+}
+
+// Each avalanche replaces all restrictions at the next round boundary.
+export function applyAvalanche(players, avalanche) {
+  return players.map(p => ({ ...p, bannedMove: avalanche.bans[p.id] ?? null }));
+}
+
+export function automaticAction(players, playerId) {
+  const player = players.find(p => p.id === playerId);
+  return { ...validateAction(players, playerId, { move: player?.bannedMove === 'charge' ? 'guard' : 'charge' }), automatic: true };
 }
 
 // Charge all costs before interrupts. Muting cancels effects, never the cost.
@@ -48,13 +60,13 @@ export function payCosts(players, actions) {
 }
 
 export function resolveRound(paidPlayers, actions, interrupts = {}) {
-  const players = paidPlayers.map(p => ({ ...p }));
+  const players = paidPlayers.map(p => ({ ...p, guards: p.guards ?? 0 }));
   const alive = players.filter(p => p.hp > 0);
   const byId = new Map(players.map(p => [p.id, p]));
   const muted = new Set();
   const logs = [];
   const hits = [];
-  const changes = Object.fromEntries(players.map(p => [p.id, { damage: 0, healing: 0, energy: 0, hammers: 0, shields: 0 }]));
+  const changes = Object.fromEntries(players.map(p => [p.id, { damage: 0, healing: 0, energy: 0, hammers: 0, shields: 0, guards: 0 }]));
   const name = id => byId.get(id)?.name || '玩家';
   const log = (type, text, extra = {}) => logs.push({ type, text, ...extra });
 
@@ -75,6 +87,7 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
     if (!action) continue;
     const change = changes[p.id];
     if (action.move === 'charge') { p.energy++; change.energy++; log('gain', `${p.name} 获得 1 个仔。`); }
+    if (action.move === 'guard') { p.guards++; change.guards++; }
     if (action.move === 'hammer') { p.hammers++; change.hammers++; }
     if (action.move === 'holy') { p.shields++; change.shields++; }
     if (action.move === 'angel' || action.move === 'darkAngel') { change.healing++; log('heal', `${p.name} 恢复 1 点生命。`, { target: p.id }); }
@@ -155,7 +168,15 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
     p.hp += changes[p.id].healing - changes[p.id].damage;
     if (p.hp <= 0) log('death', `${p.name} 已阵亡。`, { target: p.id });
   }
+  const casters = alive.filter(p => activeAction(p.id)?.move === 'avalanche');
+  let avalanche = null;
+  if (casters.length) {
+    const casterIds = casters.map(p => p.id);
+    const bans = Object.fromEntries(alive.map(p => [p.id, casterIds.includes(p.id) ? 'guard' : actions[p.id]?.move ?? null]));
+    avalanche = { casterIds, bans };
+    log('avalanche', casters.map(p => p.name).join('、') + ' 发动雪崩，下回合起覆盖旧限制：' + alive.map(p => p.name + '禁用「' + (MOVES[bans[p.id]]?.name || '无') + '」').join('；') + '。');
+  }
   const survivors = players.filter(p => p.hp > 0);
   const finished = survivors.length <= 1;
-  return { players, logs, changes, muted: [...muted], hasDamage: Object.values(changes).some(c => c.damage > 0), finished, winnerId: finished && survivors.length === 1 ? survivors[0].id : null };
+  return { players, logs, changes, avalanche, muted: [...muted], hasDamage: Object.values(changes).some(c => c.damage > 0), finished, winnerId: finished && survivors.length === 1 ? survivors[0].id : null };
 }
