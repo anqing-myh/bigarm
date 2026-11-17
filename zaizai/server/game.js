@@ -1,7 +1,8 @@
 export const MOVES = Object.freeze({
   charge: { name: '仔', icon: '✦', cost: {}, description: '积蓄力量，获得 1 个仔。', color: 'mint' },
   guard: { name: '防', icon: '◇', cost: {}, description: '抵挡本回合的枪与火球，并获得 1 个防。', color: 'blue' },
-  hammer: { name: '锤', icon: '⚒', cost: {}, target: true, description: '获得 1 个锤；敲击使用防的目标：有仔扣 1 仔，无仔扣 1 生命。抵挡地震与海浪。', color: 'amber' },
+  hammer: { name: '锤', icon: '⚒', cost: {}, target: true, description: '获得 1 个锤；敲击使用防或锤带盾的目标：有仔扣 1 仔，无仔扣 1 生命。抵挡地震与海浪。', color: 'amber' },
+  shieldHammer: { name: '锤带盾', icon: '⚒', cost: { shields: 1 }, target: true, description: '抵挡枪、火球、地震和海浪；锤击使用防或锤带盾的目标：有仔扣 1 仔，无仔扣 1 生命。自己也会被锤击，不增加锤或防次数。', color: 'amber' },
   gun: { name: '枪', icon: '↗', cost: { energy: 1 }, target: true, attack: 1, description: '对一名目标造成 1 点伤害，攻击点数 1。', color: 'red' },
   fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。提交招式时两人存活则攻击点数为 2，否则为 1；本回合不再变化。', color: 'orange' },
   angel: { name: '天使', icon: '♡', cost: { energy: 3 }, description: '恢复 1 点生命，没有生命上限。', color: 'pink' },
@@ -100,10 +101,10 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
     if (MOVES[action.move].target && !alive.some(target => target.id === action.target)) continue;
     const addHit = (target, amount, special = false) => hits.push({ source: p.id, target, move: action.move, amount, power: attackPower(action), special });
     switch (action.move) {
-      case 'hammer': {
+      case 'hammer': case 'shieldHammer': {
         const target = byId.get(action.target);
-        if (activeAction(target?.id)?.move === 'guard') {
-          if (target.energy > 0) { target.energy--; changes[target.id].energy--; log('drain', `${p.name} 的锤敲掉了 ${target.name} 的 1 个仔。`); }
+        if (['guard', 'shieldHammer'].includes(activeAction(target?.id)?.move)) {
+          if (target.energy > 0) { target.energy--; changes[target.id].energy--; log('drain', `${p.name} 的${MOVES[action.move].name}敲掉了 ${target.name} 的 1 个仔。`); }
           else addHit(target.id, 1, true);
         }
         break;
@@ -145,8 +146,8 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
   const blocked = (hit, action) => {
     if (!action) return false;
     if (hit.move === 'meteor') return false;
-    if (action.move === 'guard' && ['gun', 'fireball'].includes(hit.move)) return true;
-    if (['hammer', 'meteor'].includes(action.move) && ['quake', 'wave'].includes(hit.move)) return true;
+    if (['guard', 'shieldHammer'].includes(action.move) && ['gun', 'fireball'].includes(hit.move)) return true;
+    if (['hammer', 'shieldHammer', 'meteor'].includes(action.move) && ['quake', 'wave'].includes(hit.move)) return true;
     return action.move === 'holy' && hit.move !== 'darkAngel';
   };
   const deal = (hit, reflected = false) => {

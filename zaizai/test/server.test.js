@@ -120,7 +120,7 @@ test('联机服务：身份、权限、2–8 人房间、招式保密、阵亡�
 });
 
 
-test('polling clients stay connected and can start and synchronize a match without SSE', { timeout: 10000 }, async t => {
+test('polling clients synchronize a match and resolve shieldHammer without SSE', { timeout: 15000 }, async t => {
   const server = createServer();
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -164,6 +164,28 @@ test('polling clients stay connected and can start and synchronize a match witho
   const revealed = await request('/state?poll=1', a);
   assert.equal(revealed.room.phase, 'reveal');
   assert.ok(revealed.room.players.every(player => player.energy === 1));
+
+  async function nextRound(round) {
+    const end=Date.now()+4000;
+    while(Date.now()<end){
+      const room=(await request('/state?poll=1',a)).room;
+      if(room.phase==='selecting'&&room.round===round)return room;
+      await delay(25);
+    }
+    throw Error('等待锤带盾测试回合超时');
+  }
+  await nextRound(2);
+  for(const token of [a,b])await request('/game/action',token,{round:2,move:'holy'});
+  await nextRound(3);
+  await request('/game/action',a,{round:3,move:'shieldHammer',target:secret.self.id});
+  await request('/game/action',b,{round:3,move:'hammer',target:joined.self.id});
+  const combined=(await request('/state?poll=1',a)).room;
+  const caster=combined.players.find(p=>p.id===joined.self.id);
+  assert.equal(combined.phase,'reveal');
+  assert.equal(caster.shields,0);assert.equal(caster.hammers,0);assert.equal(caster.guards,0);
+  assert.equal(caster.hp,0,'锤带盾在无仔时被普通锤扣血');
+  assert.equal(combined.result.winnerId,secret.self.id);
+
 });
 
 

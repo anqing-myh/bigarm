@@ -7,7 +7,7 @@ const act = (move, target, reflect) => ({ move, ...(target ? { target } : {}), .
 const battle = (players, actions, interrupts) => resolveRound(payCosts(players, actions), actions, interrupts);
 const get = (result, id) => result.players.find(p => p.id === id);
 
-test('文档中 13 种招式均已定义', () => { assert.equal(Object.keys(MOVES).length, 13); });
+test('文档中 14 种招式均已定义', () => { assert.equal(Object.keys(MOVES).length, 14); });
 test('验证目标、资源、阵亡和反弹类型，拒绝非法输入', () => {
   const players = [p('a', { energy: 0 }), p('b'), p('c', { hp: 0 })];
   assert.throws(() => validateAction(players, 'a', act('gun', 'b')), /不足/);
@@ -207,4 +207,87 @@ test('超时自动行动始终遵守雪崩限制，仔被禁时改用防', () =>
     assert.equal(action.automatic,true);
     assert.equal(validateAction(players,'a',action).move,action.move);
   }
+});
+
+
+test('锤带盾消耗一个圣盾，需要有效目标；不积累锤或防', () => {
+  const players=[p('a',{shields:1,hammers:2,guards:2}),p('b',{energy:1})];
+  assert.throws(()=>validateAction([p('a',{shields:0}),p('b')],'a',act('shieldHammer','b')),/圣盾不足/);
+  for(const target of [undefined,'a','missing']){
+    assert.throws(()=>validateAction(players,'a',act('shieldHammer',target)),/目标/);
+  }
+  assert.throws(()=>validateAction([players[0],p('b',{hp:0})],'a',act('shieldHammer','b')),/目标/);
+  const action=validateAction(players,'a',act('shieldHammer','b'));
+  assert.deepEqual(action,{move:'shieldHammer',target:'b'});
+  const r=battle(players,{a:action,b:act('guard')});
+  assert.equal(get(r,'a').shields,0);
+  assert.equal(get(r,'a').hammers,2);assert.equal(get(r,'a').guards,2);
+  assert.equal(r.changes.a.hammers,0);assert.equal(r.changes.a.guards,0);
+  assert.equal(get(r,'b').energy,0);assert.equal(get(r,'b').hp,1);
+  assert.ok(r.logs.some(l=>l.type==='drain'&&l.text.includes('锤带盾')));
+});
+
+test('锤带盾同时抵挡枪、火球、地震和海浪；不能抵挡黑天使', () => {
+  const players=['a','b','c','d','e'].map(id=>p(id,{hp:6}));
+  const r=battle(players,{a:act('shieldHammer','b'),b:act('gun','a'),c:act('fireball','a'),d:act('quake'),e:act('wave')});
+  assert.equal(get(r,'a').hp,6);
+  assert.equal(r.logs.filter(l=>l.type==='block'&&l.target==='a').length,4);
+  const dark=battle([p('a',{hp:3}),p('b')],{a:act('shieldHammer','b'),b:act('darkAngel','a')});
+  assert.equal(get(dark,'a').hp,2);
+});
+
+test('多把锤与锤带盾攻击同一防或锤带盾，每次分别扣仔，耗尽后分别扣血', () => {
+  for(const move of ['guard','shieldHammer']){
+    for(const energy of [0,1,2,3,5]){
+      const r=battle([p('a',{hp:5,energy,guards:0}),p('b'),p('c'),p('d')],{
+        a:act(move,'b'),b:act('hammer','a'),c:act('shieldHammer','a'),d:act('hammer','a'),
+      });
+      assert.equal(get(r,'a').energy,Math.max(0,energy-3),move+' energy '+energy);
+      assert.equal(get(r,'a').hp,5-Math.max(0,3-energy),move+' hp '+energy);
+      assert.equal(r.changes.a.energy,energy===0?0:-Math.min(energy,3));
+      assert.equal(r.changes.a.damage,Math.max(0,3-energy));
+      assert.equal(r.logs.filter(l=>l.type==='drain').length,Math.min(energy,3));
+      assert.equal(get(r,'a').guards,move==='guard'?1:0);
+    }
+  }
+});
+
+test('两名锤带盾可以互相锤击，其他招式不受其锤击效果影响', () => {
+  const duel=battle([p('a',{hp:3,energy:0}),p('b',{hp:3,energy:0})],{a:act('shieldHammer','b'),b:act('shieldHammer','a')});
+  assert.equal(get(duel,'a').hp,2);assert.equal(get(duel,'b').hp,2);
+  for(const move of ['charge','hammer','holy','gold','angel']){
+    const r=battle([p('a'),p('b')],{a:act('shieldHammer','b'),b:act(move,'a','gun')});
+    assert.equal(r.changes.b.damage,0,move);
+    assert.equal(r.changes.b.energy,move==='charge'?1:0,move);
+  }
+});
+
+test('流星锤封锁锤带盾时消耗照扣，锤击与两类防御均失效', () => {
+  const r=battle([p('a',{hp:5,guards:0}),p('b'),p('c'),p('d')],{
+    a:act('shieldHammer','b'),b:act('guard'),c:act('meteor'),d:act('quake'),
+  },{c:'a'});
+  assert.equal(get(r,'a').shields,2);
+  assert.equal(get(r,'a').hp,3);
+  assert.equal(get(r,'b').energy,10,'封锁后不再锤击对方');
+  assert.equal(get(r,'a').hammers,3);assert.equal(get(r,'a').guards,0);
+  const gun=battle([p('a',{hp:5}),p('b'),p('c')],{
+    a:act('shieldHammer','b'),b:act('gun','a'),c:act('meteor'),
+  },{c:'a'});
+  assert.equal(get(gun,'a').hp,4);
+  const normal=battle([p('a'),p('b')],{a:act('shieldHammer','b'),b:act('meteor')});
+  assert.equal(get(normal,'a').hp,1,'锤带盾不视为圣盾或金盾，不触发流星锤破盾');
+});
+
+test('锤带盾是独立招式：雪崩禁锤或防时仍可出，禁锤带盾时不可出', () => {
+  for(const bannedMove of ['hammer','guard']){
+    assert.equal(validateAction([p('a',{bannedMove}),p('b')],'a',act('shieldHammer','b')).move,'shieldHammer');
+  }
+  assert.throws(()=>validateAction([p('a',{bannedMove:'shieldHammer'}),p('b')],'a',act('shieldHammer','b')),/雪崩/);
+  const r=battle([p('a',{guards:3}),p('b')],{a:act('avalanche'),b:act('shieldHammer','a')});
+  assert.equal(r.avalanche.bans.b,'shieldHammer');
+});
+
+test('锤带盾目标锁定后离房，仍扣圣盾且保留自身防御', () => {
+  const r=battle([p('a'),p('b',{hp:0,left:true}),p('c')],{a:act('shieldHammer','b'),c:act('quake')});
+  assert.equal(get(r,'a').shields,2);assert.equal(get(r,'a').hp,1);
 });
