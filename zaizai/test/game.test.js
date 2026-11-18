@@ -40,9 +40,9 @@ test('两人火球为 2 点数，压制对射的枪', () => {
   const r=battle([p('a'),p('b')],{a:act('gun','b'),b:act('fireball','a')});
   assert.equal(get(r,'a').hp,0);assert.equal(get(r,'b').hp,1);assert.equal(r.winnerId,'b');
 });
-test('三人火球为 1 点数，同点数仍互相伤害', () => {
+test('三人火球为 1 点数，与枪互攻抵消', () => {
   const r=battle([p('a'),p('b'),p('c')],{a:act('gun','b'),b:act('fireball','a'),c:act('guard')});
-  assert.equal(get(r,'a').hp,0);assert.equal(get(r,'b').hp,0);assert.equal(get(r,'c').hp,1);
+  assert.equal(get(r,'a').hp,1);assert.equal(get(r,'b').hp,1);assert.equal(get(r,'c').hp,1);assert.equal(r.hasDamage,false);
 });
 test('天使没有生命上限；治疗与伤害同时结算', () => {
   const r=battle([p('a'),p('b')],{a:act('angel'),b:act('gun','a')});
@@ -105,8 +105,8 @@ test('多个流星锤同时封锁，不因互相封锁而产生顺序偏差', ()
   assert.deepEqual(r.muted,['b','a']);assert.equal(get(r,'c').hp,1);assert.equal(get(r,'a').hammers,0);assert.equal(get(r,'b').hammers,0);
 });
 test('同时全部阵亡为平局，死亡不抹除同时发出的攻击', () => {
-  const r=battle([p('a'),p('b')],{a:act('gun','b'),b:act('gun','a')});
-  assert.equal(r.finished,true);assert.equal(r.winnerId,null);assert.equal(get(r,'a').hp,0);assert.equal(get(r,'b').hp,0);
+  const r=battle([p('a'),p('b'),p('c')],{a:act('gun','b'),b:act('gun','c'),c:act('gun','a')});
+  assert.equal(r.finished,true);assert.equal(r.winnerId,null);assert.ok(r.players.every(p=>p.hp===0));
 });
 test('结算不修改传入数据', () => {
   const players=[p('a'),p('b')],actions={a:act('gun','b'),b:act('charge')};
@@ -290,4 +290,41 @@ test('锤带盾是独立招式：雪崩禁锤或防时仍可出，禁锤带盾�
 test('锤带盾目标锁定后离房，仍扣圣盾且保留自身防御', () => {
   const r=battle([p('a'),p('b',{hp:0,left:true}),p('c')],{a:act('shieldHammer','b'),c:act('quake')});
   assert.equal(get(r,'a').shields,2);assert.equal(get(r,'a').hp,1);
+});
+
+
+test('所有同点数互攻彼此抵消：枪、火球、地震、海浪、黑天使', () => {
+  for(const move of ['gun','fireball','quake','wave','darkAngel']){
+    const players=[p('a',{hp:3}),p('b',{hp:3})];
+    const actions={a:validateAction(players,'a',act(move,'b')),b:validateAction(players,'b',act(move,'a'))};
+    const r=battle(players,actions);
+    assert.equal(r.hasDamage,false,move);
+    assert.ok(r.players.every(p=>p.hp===(move==='darkAngel'?4:3)),move);
+    assert.ok(r.players.every(p=>r.changes[p.id].damage===0),move);
+    assert.equal(r.finished,false,move);
+    assert.equal(r.logs.filter(l=>l.type==='clash'&&l.text.includes('抵消')).length,2,move);
+    for(const [resource,cost] of Object.entries(MOVES[move].cost)){
+      for(const player of players)assert.equal(get(r,player.id)[resource],player[resource]-cost,move);
+    }
+  }
+});
+
+test('地震与海浪同为 3 点数，互相抵消但仍分别伤害第三方', () => {
+  for(const order of [['a','b','c'],['c','b','a']]){
+    const r=battle(order.map(id=>p(id,{hp:5})),{a:act('quake'),b:act('wave'),c:act('charge')});
+    assert.equal(get(r,'a').hp,5);assert.equal(get(r,'b').hp,5);assert.equal(get(r,'c').hp,2);
+    assert.equal(r.changes.c.damage,3);
+  }
+});
+
+test('三人火球与枪同点数只抵消彼此，火球对其他目标仍生效', () => {
+  const r=battle([p('a'),p('b'),p('c')],{a:act('gun','b'),b:act('fireball','a'),c:act('charge')});
+  assert.equal(get(r,'a').hp,1);assert.equal(get(r,'b').hp,1);assert.equal(get(r,'c').hp,0);
+});
+
+test('被流星锤封锁的同点数攻击不能抵消对手攻击，资源仍照扣', () => {
+  const r=battle([p('a'),p('b'),p('c')],{a:act('gun','b'),b:act('gun','a'),c:act('meteor')},{c:'b'});
+  assert.equal(get(r,'a').hp,1);assert.equal(get(r,'b').hp,0);
+  assert.equal(get(r,'a').energy,9);assert.equal(get(r,'b').energy,9);
+  assert.ok(!r.logs.some(l=>l.type==='clash'));
 });

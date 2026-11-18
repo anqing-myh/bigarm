@@ -138,9 +138,13 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
   for (let i = 0; i < hits.length; i++) {
     const hit = hits[i];
     if (hit.power === null || reflects(hit)) continue;
-    if (hits.some(other => other.source === hit.target && other.target === hit.source && other.power !== null && other.power > hit.power)) {
+    const counter = hits.find(other => other.source === hit.target && other.target === hit.source && other.power !== null && other.power >= hit.power);
+    if (counter) {
       suppressed.add(i);
-      log('clash', `${name(hit.source)} 的${MOVES[hit.move].name}被 ${name(hit.target)} 更高点数的攻击压制。`, { source: hit.source, target: hit.target });
+      const text = counter.power === hit.power
+        ? name(hit.source) + ' 的' + MOVES[hit.move].name + '与 ' + name(hit.target) + ' 的' + MOVES[counter.move].name + '点数相同，彼此抵消。'
+        : name(hit.source) + ' 的' + MOVES[hit.move].name + '被 ' + name(hit.target) + ' 更高点数的攻击压制。';
+      log('clash', text, { source: hit.source, target: hit.target });
     }
   }
   const blocked = (hit, action) => {

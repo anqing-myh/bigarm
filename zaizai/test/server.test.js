@@ -120,7 +120,7 @@ test('联机服务：身份、权限、2–8 人房间、招式保密、阵亡�
 });
 
 
-test('polling clients synchronize a match and resolve shieldHammer without SSE', { timeout: 15000 }, async t => {
+test('polling clients cancel equal attacks, continue rounds and resolve shieldHammer', { timeout: 15000 }, async t => {
   const server = createServer();
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -175,10 +175,23 @@ test('polling clients synchronize a match and resolve shieldHammer without SSE',
     throw Error('等待锤带盾测试回合超时');
   }
   await nextRound(2);
-  for(const token of [a,b])await request('/game/action',token,{round:2,move:'holy'});
+  await request('/game/action',a,{round:2,move:'gun',target:secret.self.id});
+  await request('/game/action',b,{round:2,move:'gun',target:joined.self.id});
+  const cancelled=(await request('/state?poll=1',a)).room;
+  assert.equal(cancelled.phase,'reveal');
+  assert.equal(cancelled.result.hasDamage,false);
+  assert.equal(cancelled.result.finished,false);
+  assert.equal(cancelled.lastMatch,null);
+  assert.ok(cancelled.players.every(p=>p.hp===1&&p.energy===0));
+  assert.ok(cancelled.result.logs.some(l=>l.type==='clash'&&l.text.includes('抵消')));
+  assert.ok(cancelled.deadline-Date.now()>1500&&cancelled.deadline-Date.now()<=2000);
   await nextRound(3);
-  await request('/game/action',a,{round:3,move:'shieldHammer',target:secret.self.id});
-  await request('/game/action',b,{round:3,move:'hammer',target:joined.self.id});
+  for(const token of [a,b])await request('/game/action',token,{round:3,move:'charge'});
+  await nextRound(4);
+  for(const token of [a,b])await request('/game/action',token,{round:4,move:'holy'});
+  await nextRound(5);
+  await request('/game/action',a,{round:5,move:'shieldHammer',target:secret.self.id});
+  await request('/game/action',b,{round:5,move:'hammer',target:joined.self.id});
   const combined=(await request('/state?poll=1',a)).room;
   const caster=combined.players.find(p=>p.id===joined.self.id);
   assert.equal(combined.phase,'reveal');

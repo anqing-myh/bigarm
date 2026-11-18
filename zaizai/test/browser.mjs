@@ -248,8 +248,21 @@ try {
   assert.match(await a.locator('#modal .match-result').textContent(),/橘子测试 获胜/);
   await a.locator('#modal [data-act=close-modal]').click();
   await screenshot(a,'14-locked-winner-left');
+  for(const page of [a,b])await page.locator('.arena-controls [data-act=ready]').click();
+  await waitPhase(a,'selecting',1);
+  await clickMove(a,'charge');await clickMove(b,'charge');
+  await waitPhase(a,'selecting',2);
+  await clickMove(a,'gun');await clickMove(b,'gun');
+  await waitPhase(a,'reveal',2);
+  room=(await info(a)).room;
+  assert.ok(room.players.every(p=>p.hp===1&&p.energy===0),'枪对枪彼此抵消，消耗照扣且无人阵亡');
+  assert.equal(room.result.hasDamage,false);assert.equal(room.result.finished,false);
+  await a.locator('.arena-hud h2').filter({hasText:'无人受伤'}).waitFor();
+  await screenshot(a,'17-equal-attacks-cancel');
+  await waitPhase(a,'selecting',3);
+  assert.ok((await info(a)).room.players.every(p=>p.hp===1),'抵消后继续下一回合');
   assert.deepEqual(errors,[],'浏览器无 JavaScript 或资源错误');
-  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变'],screenshots:16,errors},null,2));
+  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局'],screenshots:17,errors},null,2));
 } finally {
   for(const page of pages) {
     try { await page.evaluate(async()=>{const token=sessionStorage.getItem('zaizai-token');if(token)await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}'});}); } catch {}
