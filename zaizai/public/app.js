@@ -22,6 +22,7 @@ let inviteHandled = false;
 let rulesReady;
 let pollingStateKey;
 let deferredRender = false;
+let renderedSelection = null;
 const ui = {move:null,target:null,reflect:'gun',interruptTarget:null,busy:false,search:'',filter:'all',sound:localStorage.getItem('zaizai-sound')==='true'};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (name, size = 20) => {
@@ -89,7 +90,7 @@ function acceptState(next) {
     lastRound=key;
   }
   state=next;self=next.self;timeOffset=next.serverTime-Date.now();
-  if(document.activeElement?.matches('select'))deferredRender=true;
+  if(document.activeElement?.matches('select')&&!canPatchSelection())deferredRender=true;
   else {deferredRender=false;render();}
   maybeJoinInvite();
 }
@@ -149,6 +150,57 @@ function costLabel(move) {
 }
 function disabled(value) {return value?'disabled':'';}
 
+// Other players locking a move must not rebuild the arena or native controls.
+function selectionKey(){
+  const room=state.room;
+  if(!self||room?.phase!=='selecting')return null;
+  return JSON.stringify({self,room:{...room,submitted:null,ownAction:null},move:ui.move,target:ui.target,reflect:ui.reflect,sound:ui.sound});
+}
+function canPatchSelection(){
+  return renderedSelection!==null&&renderedSelection.key===selectionKey();
+}
+function validSelection(room,me){
+  const move=moves[ui.move],target=room.players.find(p=>p.id===ui.target);
+  return !!move&&ui.move!==me.bannedMove&&(!move.target||target?.hp>0)&&(!move.reflect||ui.reflect);
+}
+function patchSelection(){
+  if(!canPatchSelection())return false;
+  const room=state.room,me=room.players.find(p=>p.id===self.id);
+  const submitted=new Set(room.submitted);
+  for(const seat of app.querySelectorAll('.seat[data-id]')){
+    const id=seat.dataset.id,player=room.players.find(p=>p.id===id);
+    let bubble=seat.querySelector('.action-bubble.locked');
+    if(submitted.has(id)&&!bubble){
+      bubble=document.createElement('span');bubble.className='action-bubble locked';
+      bubble.innerHTML=icon('lock',11)+' 已锁定';seat.prepend(bubble);
+    }else if(!submitted.has(id)&&bubble)bubble.remove();
+    const canTarget=me.hp>0&&!room.ownAction&&!!moves[ui.move]?.target&&id!==self.id&&player.hp>0;
+    if(seat.disabled===canTarget)seat.disabled=!canTarget;
+    seat.classList.toggle('targetable',canTarget);
+    if(!canTarget)seat.querySelector('.target-check')?.remove();
+  }
+  const title=app.querySelector('.hud-timer-row h2');
+  const heading=me.hp<=0?'正在观战':room.ownAction?'已锁定':'秘密选招';
+  if(title.textContent!==heading)title.textContent=heading;
+  const count=app.querySelector('.hud-timer-row p');
+  const progress=room.players.filter(p=>p.hp>0&&submitted.has(p.id)).length+' / '+room.players.filter(p=>p.hp>0).length+' 已锁定';
+  if(count.textContent!==progress)count.textContent=progress;
+  const ownAction=JSON.stringify(room.ownAction);
+  if(renderedSelection.ownAction!==ownAction){
+    app.querySelector('.arena-controls').innerHTML=arsenal(room,me);
+    const instruction=app.querySelector('.battle-instruction');
+    instruction.textContent=room.ownAction||me.hp<=0?'序号逆时针排列 · 自己始终在最下方':room.players.filter(p=>p.hp>0).length===2?'选择招式 → 默认对手 → 锁定':'选择招式 → 点击目标 → 锁定';
+    renderedSelection.ownAction=ownAction;
+  }
+  for(const button of app.querySelectorAll('.move-card')){
+    if(button.disabled!==ui.busy)button.disabled=ui.busy;
+  }
+  const lock=app.querySelector('[data-act="submit-action"]');
+  const lockDisabled=ui.busy||!validSelection(room,me);
+  if(lock&&lock.disabled!==lockDisabled)lock.disabled=lockDisabled;
+  tick();
+  return true;
+}
 function render() {
   const focused=document.activeElement;
   const focusId=focused?.id;const selectionStart=focused?.selectionStart;const selectionEnd=focused?.selectionEnd;
@@ -161,8 +213,11 @@ function render() {
     const me=state.room.players.find(p=>p.id===self.id),move=moves[ui.move];
     if(move&&(me.bannedMove===ui.move||!Object.entries(move.cost).every(([key,n])=>(me[key]??0)>=n))){ui.move=null;ui.target=null;}
   }
+  if(patchSelection())return;
   document.body.classList.toggle('in-room',!!self&&!!state.room);
   app.innerHTML=!self?landing():state.room?arenaPage(state.room):lobby();
+  const key=selectionKey();
+  renderedSelection=key?{key,ownAction:JSON.stringify(state.room.ownAction)}:null;
   for(const [id,value] of preserved){const el=document.getElementById(id);if(el)el.value=value;}
   if(focusId&&document.getElementById(focusId)&&app.contains(document.getElementById(focusId))){
     const el=document.getElementById(focusId);el.focus({preventScroll:true});
@@ -272,8 +327,8 @@ function arsenal(room,me){
     const move=moves[room.ownAction.move],target=room.players.find(p=>p.id===room.ownAction.target);
     return '<section class="locked-selection '+move.color+'"><span class="move-glyph">'+move.icon+'</span><span class="eyebrow">MOVE LOCKED</span><h2>已锁定 · '+esc(move.name)+'</h2><p>'+(target?'目标：'+esc(target.name):room.ownAction.reflect?'反弹：'+esc(moves[room.ownAction.reflect].name):'等待其他玩家出招')+'</p><span class="center-badge">'+icon('lock',11)+' 全员锁定后同时亮招</span></section>';
   }
-  const selectedMove=moves[ui.move],target=room.players.find(p=>p.id===ui.target);
-  const valid=!!selectedMove&&ui.move!==me.bannedMove&&(!selectedMove.target||target?.hp>0)&&(!selectedMove.reflect||ui.reflect);
+  const selectedMove=moves[ui.move];
+  const valid=validSelection(room,me);
   const available=Object.entries(moves).filter(([id,move])=>id!==me.bannedMove&&Object.entries(move.cost).every(([key,n])=>(me[key]??0)>=n));
   return '<section class="arsenal'+(available.length>6?' many-moves':'')+'"><div class="moves-grid">'+available.map(([id,move])=>'<button class="move-card '+move.color+' '+(ui.move===id?'selected':'')+'" data-act="move" data-id="'+id+'" '+disabled(ui.busy)+' title="'+esc(move.description)+'" aria-pressed="'+(ui.move===id)+'"><span class="move-glyph">'+move.icon+'</span><strong>'+move.name+'</strong><span class="move-cost">'+costLabel(move)+'</span></button>').join('')+'</div><div class="action-bar">'+(selectedMove?.reflect?'<select id="reflect-select" aria-label="金盾反弹招式">'+reflectable.map(id=>'<option value="'+id+'" '+(id===ui.reflect?'selected':'')+'>反弹 · '+moves[id].name+'</option>').join('')+'</select>':'')+'<button class="primary-button lock-button" data-act="submit-action" '+disabled(!valid||ui.busy)+'>'+icon('lock',15)+' 锁定招式</button></div></section>';
 }
