@@ -126,3 +126,16 @@ dialog .battle-log .log-content{max-height:min(52dvh,480px)}
   .game-room .arena-controls .arsenal .lock-button{min-height:34px;font-size:11px;padding:6px}
   .game-room .arena-controls .arsenal #reflect-select{height:34px;font-size:9px;padding:4px}
 }
+
+/* Public resources and avalanche restrictions stay with each avatar. */
+.game-room .seat-detail{display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.35}
+.seat-vitals,.seat-resources{display:block;white-space:nowrap}
+.game-room .seat-resources{color:#adc49b;font-size:10px;letter-spacing:0}
+.game-room .seat-ban{display:block;max-width:154px;white-space:normal;overflow-wrap:anywhere;color:#b8dff4;font-size:10px}
+.game-room .action-bubble{display:block;max-width:180px;white-space:normal;overflow-wrap:anywhere;text-align:center}
+@media(max-width:600px){
+  .game-room .seat-detail{gap:1px}
+  .game-room .seat-resources,.game-room .seat-ban{font-size:7px}
+  .game-room .seat-ban{max-width:94px}
+  .game-room .action-bubble{max-width:110px;font-size:8px;line-height:1.4}
+}

@@ -269,3 +269,61 @@ test('雪崩联机：下一回合禁招、覆盖、持久化、施放者离房�
   room=await state(a);assert.equal(room.gameNumber,2);assert.equal(room.round,1);
   assert.ok(room.players.every(p=>p.guards===0&&p.bannedMove===null&&p.energy===0));
 });
+
+
+test('流星锤联机：封锁对方圣盾后不破盾，双方均不受伤', {timeout:18000}, async t=>{
+  const server=createServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  const base='http://127.0.0.1:'+server.address().port+'/api',clients=[];
+  async function req(route,token,body){
+    const response=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+    const data=await response.json();assert.equal(response.status,200,JSON.stringify(data));return data;
+  }
+  t.after(async()=>{for(const c of clients)await req('/rooms/leave',c.token,{});server.closeAllConnections();await new Promise(r=>server.close(r));});
+  for(const name of ['流星','圣盾']){const c=await req('/session',null,{name});clients.push(c);await req('/state?poll=1',c.token);}
+  const [a,b]=clients,post=(c,route,body={})=>req(route,c.token,body),state=async()=>(await req('/state?poll=1',a.token)).room;
+  await post(a,'/rooms/create',{capacity:2});const roomId=(await state()).id;
+  await post(b,'/rooms/join',{roomId});await post(a,'/rooms/ready');await post(b,'/rooms/ready');
+  async function wait(phase,round){
+    const end=Date.now()+4000;
+    while(Date.now()<end){const room=await state();if(room.phase===phase&&room.round===round)return room;await delay(25);}
+    throw Error('等待流星锤阶段超时');
+  }
+  for(let round=1;round<=3;round++){
+    await wait('selecting',round);
+    await post(a,'/game/action',{round,move:'hammer',target:b.self.id});
+    await post(b,'/game/action',{round,move:'charge'});
+  }
+  await wait('selecting',4);
+  await post(a,'/game/action',{round:4,move:'meteor'});
+  await post(b,'/game/action',{round:4,move:'holy'});
+  await wait('interrupt',4);
+  await post(a,'/game/interrupt',{round:4,target:b.self.id});
+  const room=await wait('reveal',4);
+  assert.ok(room.players.every(p=>p.hp===1));
+  assert.equal(room.players.find(p=>p.id===b.self.id).shields,0);
+  assert.equal(room.result.hasDamage,false);assert.equal(room.result.finished,false);
+});
+
+test('选招默认 15 秒，超时自动出招后正常进入结算', {timeout:21000}, async t=>{
+  const server=createServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  const base='http://127.0.0.1:'+server.address().port+'/api',clients=[];
+  async function req(route,token,body){
+    const response=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+    const data=await response.json();assert.equal(response.status,200);return data;
+  }
+  t.after(async()=>{for(const c of clients)await req('/rooms/leave',c.token,{});server.closeAllConnections();await new Promise(r=>server.close(r));});
+  for(const name of ['超时甲','超时乙']){const c=await req('/session',null,{name});clients.push(c);await req('/state?poll=1',c.token);}
+  const [a,b]=clients;
+  await req('/rooms/create',a.token,{capacity:2});
+  const state=async()=>(await req('/state?poll=1',a.token)).room;
+  const roomId=(await state()).id;await req('/rooms/join',b.token,{roomId});
+  await req('/rooms/ready',a.token,{});await req('/rooms/ready',b.token,{});
+  const first=await state(),start=Date.now();
+  assert.ok(first.deadline-start<=15000&&first.deadline-start>14000);
+  let room;
+  while(Date.now()-start<17500){room=await state();if(room.phase==='reveal')break;await delay(50);}
+  assert.equal(room.phase,'reveal');assert.equal(room.round,1);
+  assert.ok(Date.now()-start>=14000);
+  assert.ok(Object.values(room.actions).every(a=>a.move==='charge'&&a.automatic));
+  assert.ok(room.players.every(p=>p.energy===1));
+});

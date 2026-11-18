@@ -5,13 +5,13 @@ export const MOVES = Object.freeze({
   shieldHammer: { name: '锤带盾', icon: '⚒', cost: { shields: 1 }, target: true, description: '抵挡枪、火球、地震和海浪；锤击使用防或锤带盾的目标：有仔扣 1 仔，无仔扣 1 生命。自己也会被锤击，不增加锤或防次数。', color: 'amber' },
   gun: { name: '枪', icon: '↗', cost: { energy: 1 }, target: true, attack: 1, description: '对一名目标造成 1 点伤害，攻击点数 1。', color: 'red' },
   fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。提交招式时两人存活则攻击点数为 2，否则为 1；本回合不再变化。', color: 'orange' },
-  angel: { name: '天使', icon: '♡', cost: { energy: 3 }, description: '恢复 1 点生命，没有生命上限。', color: 'pink' },
+  angel: { name: '天使', icon: '♡', cost: { energy: 3 }, description: '恢复 1 点生命，没有生命上限；本回合受到的总伤害至多 1 点。', color: 'pink' },
   quake: { name: '地震', icon: '⌁', cost: { energy: 4 }, attack: 3, description: '对所有其他存活玩家造成 2 点伤害，攻击点数 3。', color: 'amber' },
-  darkAngel: { name: '黑天使', icon: '♜', cost: { energy: 5 }, target: true, attack: 4, description: '对一名目标造成 1 点伤害，自己恢复 1 生命。攻击点数 4，穿透圣盾。', color: 'violet' },
+  darkAngel: { name: '黑天使', icon: '♜', cost: { energy: 5 }, target: true, attack: 4, description: '对一名目标造成 1 点伤害，自己恢复 1 生命，本回合受到的总伤害至多 1 点。攻击点数 4，穿透圣盾。', color: 'violet' },
   holy: { name: '圣盾', icon: '⬡', cost: { energy: 1 }, description: '抵挡除黑天使、流星锤破盾外的攻击，并获得 1 个圣盾。', color: 'blue' },
   gold: { name: '金盾', icon: '◈', cost: { energy: 1 }, reflect: true, description: '预判一种攻击，反弹本回合命中自己的该类攻击。不能反弹流星锤。', color: 'amber' },
   wave: { name: '海浪', icon: '≋', cost: { shields: 3 }, attack: 3, description: '对所有其他存活玩家造成 1 点伤害，反弹火球。攻击点数 3。', color: 'cyan' },
-  meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对使用圣盾或金盾者造成 1 伤害。亮招后可封锁任意一人的招式，资源照常消耗。', color: 'violet' },
+  meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对仍生效的圣盾或金盾造成 1 伤害；封锁盾后不造成破盾伤害。亮招后可封锁任意一人的招式，资源照常消耗。', color: 'violet' },
   avalanche: { name: '雪崩', icon: '❄', cost: { guards: 3 }, description: '从下回合起，自己禁用防，其他玩家各自禁用本回合所选招式，直到新的雪崩覆盖限制。', color: 'cyan' },
 });
 
@@ -121,8 +121,8 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
         for (const target of alive) if (target.id !== p.id) addHit(target.id, action.move === 'quake' ? 2 : 1);
         break;
       case 'meteor':
-        // A muted shield is still a declared shield, but has no defensive effect.
-        for (const target of alive) if (target.id !== p.id && ['holy', 'gold'].includes(actions[target.id]?.move)) addHit(target.id, 1, true);
+        // Only active shields can receive meteor shield-breaking damage.
+        for (const target of alive) if (target.id !== p.id && ['holy', 'gold'].includes(activeAction(target.id)?.move)) addHit(target.id, 1, true);
         break;
     }
   }
@@ -165,8 +165,12 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
       deal({ ...hit, source: hit.target, target: hit.source }, true);
       return;
     }
-    changes[hit.target].damage += hit.amount;
-    log('damage', `${name(hit.source)} 的${MOVES[hit.move].name}对 ${name(hit.target)} 造成 ${hit.amount} 点伤害。`, { source: hit.source, target: hit.target, amount: hit.amount, reflected });
+    const protectedByAngel = ['angel', 'darkAngel'].includes(defense?.move);
+    const amount = protectedByAngel ? Math.min(hit.amount, Math.max(0, 1 - changes[hit.target].damage)) : hit.amount;
+    if (amount < hit.amount) log('block', name(hit.target) + ' 的' + MOVES[defense.move].name + '将本回合总伤害限制为 1 点。', { source: hit.source, target: hit.target });
+    if (amount === 0) return;
+    changes[hit.target].damage += amount;
+    log('damage', name(hit.source) + ' 的' + MOVES[hit.move].name + '对 ' + name(hit.target) + ' 造成 ' + amount + ' 点伤害。', { source: hit.source, target: hit.target, amount, reflected });
   };
   hits.forEach((hit, i) => { if (!suppressed.has(i)) deal(hit); });
   for (const p of alive) {

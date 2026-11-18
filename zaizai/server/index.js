@@ -6,7 +6,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { MOVES, REFLECTABLE, RESOURCE_NAMES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction } from './game.js';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
-const SELECTION_MS = Number(process.env.SELECTION_MS) || 30000;
+const SELECTION_MS = Number(process.env.SELECTION_MS) || 15000;
 const INTERRUPT_MS = Number(process.env.INTERRUPT_MS) || 12000;
 const DISCONNECT_MS = Number(process.env.DISCONNECT_MS) || 60000;
 const sessions = new Map();

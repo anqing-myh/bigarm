@@ -123,13 +123,16 @@ try {
   await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);Object.assign(me,{energy:20,hammers:6,shields:6,guards:6});while(state.room.players.length<8){const i=state.room.players.length;state.room.players.push({...me,id:'layout-'+i,name:'玩家'+(i+1),seat:i});}render();});
   assert.equal(await a.locator('.move-card').count(),14);await checkPlayViewport(a);await checkRing(a,8);
 
-  assert.ok((await a.locator('.seat-detail').allTextContents()).every(text=>!/[⚒⬡◇]/u.test(text)),'头像状态不展示锤、圣盾、防');
+  assert.equal(await a.locator('.seat-resources').count(),8,'所有头像公开资源');
   await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);me.bannedMove='charge';ui.move='charge';render();});
   assert.equal(await a.locator('[data-act=move][data-id=charge]').count(),0,'雪崩禁招从可选列表移除');
   assert.equal(await a.locator('[data-act=submit-action]').isDisabled(),true,'禁招不能保留为待提交选择');
   assert.equal(await a.locator('.arsenal-heading,.selected-description,.action-detail').count(),0,'选招区只保留招式和锁定控件');
-  await a.evaluate(()=>{state.room.players.find(p=>p.id===self.id).bannedMove=null;render();});
+  assert.match(await a.locator('.seat.is-me .seat-ban').textContent(),/雪崩禁用：仔/);
+  await a.evaluate(()=>{state.room.players.forEach(p=>p.bannedMove='charge');render();});
+  assert.equal(await a.locator('.seat-ban').count(),8);
 
+  await a.evaluate(()=>{state.room.players.forEach(p=>p.bannedMove=null);render();});
   await screenshot(a,'15-eight-players-all-moves');
   await a.locator('[data-act=move][data-id=shieldHammer]').click();
   assert.equal(await a.locator('[data-act=submit-action]').isDisabled(),true,'多人存活时锤带盾需要指定目标');
@@ -163,6 +166,25 @@ try {
       assert.deepEqual(overlaps,[],'Resources '+energy+'/'+hammers+'/'+shields+', selecting '+id+' keeps avatars clear');
     }
   }
+
+  const shownResources=await a.locator('.seat.is-me .seat-resources').textContent();
+  assert.match(shownResources,/圣盾 1.*锤 0.*防 0/,'头像公开显示当前资源，随资源变化更新');
+  const selectingRoom=await a.evaluate(()=>structuredClone(state.room));
+  for(const move of ['gun','hammer','darkAngel','fireball','shieldHammer']){
+    await a.evaluate(({move,idB,idC})=>{
+      state.room.phase='reveal';state.room.actions={[self.id]:{move,target:idB},[idB]:{move:'gold',reflect:'fireball'},[idC]:{move:'guard'}};
+      state.room.players.forEach(p=>p.bannedMove='charge');render();
+    },{move,idB,idC});
+    assert.match(await a.locator('.seat.is-me .action-bubble').textContent(),new RegExp(move==='shieldHammer'?'锤带盾 → 小蓝测试':({gun:'枪',hammer:'锤',darkAngel:'黑天使',fireball:'火球'}[move])+' → 小蓝测试'));
+    assert.match(await a.locator('.seat[data-id="'+idB+'"] .action-bubble').textContent(),/金盾：火球/);
+    assert.equal(await a.locator('.seat-ban').count(),8);
+  }
+  await a.setViewportSize({width:390,height:844});await screenshot(a,'18-revealed-targets-and-resources-mobile');
+  assert.equal(await a.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  const bubbled=await a.locator('.action-bubble').evaluateAll(els=>els.every(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&el.scrollWidth<=el.clientWidth+1;}));
+  assert.equal(bubbled,true,'亮招目标与金盾反弹信息完整显示且不超出屏幕');
+  await a.evaluate(room=>{state.room=room;render();},selectingRoom);
+  await a.setViewportSize({width:1366,height:768});
   await a.evaluate(room=>{state.room=room;render();},savedRoom);
   await a.setViewportSize({width:1440,height:1050});
   for (let round = 1; round <= 3; round++) {
@@ -262,7 +284,7 @@ try {
   await waitPhase(a,'selecting',3);
   assert.ok((await info(a)).room.players.every(p=>p.hp===1),'抵消后继续下一回合');
   assert.deepEqual(errors,[],'浏览器无 JavaScript 或资源错误');
-  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局'],screenshots:17,errors},null,2));
+  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局','公开资源和雪崩禁招','亮招目标与金盾反弹信息'],screenshots:18,errors},null,2));
 } finally {
   for(const page of pages) {
     try { await page.evaluate(async()=>{const token=sessionStorage.getItem('zaizai-token');if(token)await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}'});}); } catch {}

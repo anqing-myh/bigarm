@@ -94,7 +94,7 @@ test('流星锤抵挡地震海浪；可以封锁攻击，消耗照扣', () => {
 });
 test('封锁圣盾：支付资源但既不产生盾也不阻挡其他伤害', () => {
   const r=battle([p('a'),p('b',{hp:5}),p('c')],{a:act('meteor'),b:act('holy'),c:act('gun','b')},{a:'b'});
-  assert.equal(get(r,'b').energy,9);assert.equal(get(r,'b').shields,3);assert.equal(get(r,'b').hp,3);
+  assert.equal(get(r,'b').energy,9);assert.equal(get(r,'b').shields,3);assert.equal(get(r,'b').hp,4);
 });
 test('流星锤可封锁自己；消耗锤但不会造成破盾伤害', () => {
   const r=battle([p('a'),p('b')],{a:act('meteor'),b:act('holy')},{a:'a'});
@@ -327,4 +327,56 @@ test('被流星锤封锁的同点数攻击不能抵消对手攻击，资源仍�
   assert.equal(get(r,'a').hp,1);assert.equal(get(r,'b').hp,0);
   assert.equal(get(r,'a').energy,9);assert.equal(get(r,'b').energy,9);
   assert.ok(!r.logs.some(l=>l.type==='clash'));
+});
+
+
+test('流星锤封锁圣盾或金盾后不破盾；封锁自己也不攻击，跳过则仍破盾', () => {
+  for(const move of ['holy','gold']){
+    const players=[p('a'),p('b')],actions={a:act('meteor'),b:act(move,null,'gun')};
+    for(const target of ['a','b']){
+      const r=battle(players,actions,{a:target});
+      assert.equal(get(r,'b').hp,1,move+' muted '+target);
+      assert.equal(r.hasDamage,false);
+      assert.equal(get(r,'a').hammers,0);
+      assert.equal(get(r,'b').energy,9);
+      assert.equal(get(r,'b').shields,move==='holy'&&target==='a'?4:3);
+    }
+    assert.equal(get(battle(players,actions),'b').hp,0,move+' active');
+  }
+});
+
+test('被任意流星锤封锁的盾不会触发其他流星锤的破盾伤害', () => {
+  const r=battle([p('a'),p('b'),p('c')],{a:act('meteor'),b:act('meteor'),c:act('holy')},{a:'c',b:null});
+  assert.equal(get(r,'c').hp,1);assert.equal(get(r,'c').shields,3);
+  assert.equal(r.changes.c.damage,0);assert.equal(r.hasDamage,false);
+});
+
+test('天使和黑天使的当回合总伤害封顶 1，单次 2 伤害与多来源也合并封顶', () => {
+  for(const move of ['angel','darkAngel']){
+    for(const order of [['a','b','c','d','e'],['e','d','c','b','a']]){
+      const players=order.map(id=>p(id,{hp:6}));
+      const r=battle(players,{a:act(move,'e'),b:act('quake'),c:act('gun','a'),d:act('wave'),e:act('charge')});
+      assert.equal(get(r,'a').hp,6,move);
+      assert.equal(r.changes.a.damage,1);assert.equal(r.changes.a.healing,1);
+      assert.equal(r.logs.filter(l=>l.type==='damage'&&l.target==='a').reduce((n,l)=>n+l.amount,0),1);
+      assert.ok(r.logs.some(l=>l.type==='block'&&l.target==='a'));
+    }
+  }
+});
+
+test('黑天使反弹伤害和其他攻击共同计入 1 点上限；无伤时治疗照常', () => {
+  const r=battle([p('a',{hp:4}),p('b'),p('c')],{a:act('darkAngel','b'),b:act('gold',null,'darkAngel'),c:act('quake')});
+  assert.equal(r.changes.a.damage,1);assert.equal(get(r,'a').hp,4);
+  for(const move of ['angel','darkAngel']){
+    const healed=battle([p('a',{hp:4}),p('b')],{a:act(move,'b'),b:act('charge')});
+    assert.equal(healed.changes.a.damage,0);assert.equal(get(healed,'a').hp,5);
+  }
+});
+
+test('天使或黑天使被封锁后不治疗、也没有伤害上限保护', () => {
+  for(const move of ['angel','darkAngel']){
+    const r=battle([p('a',{hp:6}),p('b'),p('c'),p('d')],{a:act(move,'c'),b:act('meteor'),c:act('quake'),d:act('gun','a')},{b:'a'});
+    assert.equal(r.changes.a.healing,0);assert.equal(r.changes.a.damage,3);
+    assert.equal(get(r,'a').hp,3);assert.equal(get(r,'a').energy,move==='angel'?7:5);
+  }
 });
