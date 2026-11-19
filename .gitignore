@@ -28,6 +28,10 @@ coverage/
 test-results/
 playwright-report/
 
+# ZAIZAI local preview runtime and optional Cloudflare executable
+/zaizai/.preview/
+/zaizai/cloudflared.exe
+
 # Operating system artifacts
 .DS_Store
 Thumbs.db

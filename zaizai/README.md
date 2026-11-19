@@ -41,6 +41,57 @@ node server/index.js
 
 服务监听 0.0.0.0。用 ipconfig 查看服务端电脑 IPv4，例如 192.168.1.20，同一 Wi-Fi 的其他设备访问 `http://192.168.1.20:3000`，不能使用它们自己的 localhost。首次运行时，如 Windows 提示，允许 Node.js 在所需网络上通信。
 
+### 临时公网联机（trycloudflare）
+
+Windows 协作者可双击项目目录下的 `start-preview.cmd`，或在 PowerShell 中运行：
+
+```powershell
+cd D:\Bigarm\zaizai
+.\start-preview.cmd
+```
+
+前置条件是 Node.js 22+ 和 `cloudflared.exe`。从 [Cloudflare 官方下载页](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) 下载适合 Windows 的 cloudflared，将其重命名为 `cloudflared.exe` 放进 `zaizai` 目录，或添加到 PATH；无需 Cloudflare 账号、域名或登录。脚本也支持 `CLOUDFLARED_PATH` 环境变量和显式指定路径：
+
+```powershell
+.\start-preview.cmd -CloudflaredPath 'D:\tools\cloudflared.exe'
+```
+
+脚本会检查依赖，启动本地游戏服务，等待服务就绪后打开本地浏览器，并启动 Quick Tunnel。在终端中找到绿色的 `Public preview: https://随机名称.trycloudflare.com`，将完整 HTTPS 地址分享给其他玩家；所有人访问同一个公网地址，再创建或加入房间。公网连接刚建立时可能需要等待几秒。
+
+常用参数（可组合使用）：
+
+```powershell
+# 仅本地预览，不需要 cloudflared
+.\start-preview.cmd -LocalOnly
+
+# 3000 被其他服务占用时改用 3100，本地服务与隧道自动使用相同端口
+.\start-preview.cmd -Port 3100
+
+# 不自动打开浏览器；本地和公网地址仍会输出
+.\start-preview.cmd -NoBrowser
+```
+
+保持脚本窗口打开；结束时在窗口内按回车，脚本会关闭自己创建的隧道与游戏服务。同一端口已运行相同版本的游戏服务时会复用，退出脚本不会停止该已有服务；端口上的其他服务或不同版本不会被关闭。脚本会优先使用指定路径、PATH 或项目内的 cloudflared，最后兼容本工作区已有的 `../.codex/runtime/cloudflared.exe`，不会改动该目录或停止其中已有进程。
+
+日志与独立隧道配置写入 `zaizai/.preview/<本次运行编号>/`，已加入 `.gitignore`；本地放置的 `zaizai/cloudflared.exe` 也不会提交。启动失败时终端会显示错误与日志路径。脚本为隧道传入独立空配置，不会覆盖协作者已有的 Cloudflare 配置；若公司网络或防火墙阻止连接，需要先处理网络限制。出现 `status 429` 时表示 Cloudflare 暂时拒绝创建隧道，可稍后重试，等待期间使用 `-LocalOnly`；脚本不会无限重试。
+
+Quick Tunnel 用于临时测试，地址每次启动都会变化，停止隧道后失效，没有持续可用保证；任何拿到链接的人都可访问游戏。Quick Tunnel 不支持 SSE，本项目已对 `*.trycloudflare.com` 自动切换为轮询同步，不需要额外设置。官方说明见 [Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)。稳定公网地址请使用正式部署或固定域名隧道。
+
+如需手动启动，可分别保持下面两个 PowerShell 终端运行：
+
+```powershell
+# 终端 1：游戏服务
+cd D:\Bigarm\zaizai
+node server/index.js
+```
+
+```powershell
+# 终端 2：cloudflared 已加入 PATH；未加入时请使用其完整路径
+cloudflared tunnel --url http://127.0.0.1:3000
+```
+
+手动启动时，如果 cloudflared 读取到已有的命名隧道配置而无法创建临时隧道，可使用本项目脚本的独立配置方式。手动启动的进程需在各自终端按 `Ctrl+C` 停止。
+
 ### 互联网部署
 
 将项目部署到支持持续运行 Node.js 的服务器或容器，启动命令 `node server/index.js`，可配置 PORT 环境变量。需要常驻服务，纯静态托管不适用。项目不会自动生成公网地址。
@@ -144,3 +195,4 @@ npm.cmd run test:browser
 - test/server.test.js：多人服务集成测试。
 - test/results.test.js：结果锁定、连续对局胜场、离房重进与固定序号测试。
 - test/browser.mjs：三个真实独立浏览器的全流程测试。
+- start-preview.cmd / start-preview.ps1：Windows 本地预览与 trycloudflare 临时公网联机入口。
