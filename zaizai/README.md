@@ -56,7 +56,7 @@ cd D:\Bigarm\zaizai
 .\start-preview.cmd -CloudflaredPath 'D:\tools\cloudflared.exe'
 ```
 
-脚本会检查依赖，启动本地游戏服务，等待服务就绪后打开本地浏览器，并启动 Quick Tunnel。在终端中找到绿色的 `Public preview: https://随机名称.trycloudflare.com`，将完整 HTTPS 地址分享给其他玩家；所有人访问同一个公网地址，再创建或加入房间。公网连接刚建立时可能需要等待几秒。
+脚本默认使用 **3100** 端口，本地预览地址为 `http://127.0.0.1:3100`。脚本会检查依赖，启动本地游戏服务，等待服务就绪后打开本地浏览器，并启动 Quick Tunnel。在终端中找到绿色的 `Public preview: https://随机名称.trycloudflare.com`，将完整 HTTPS 地址分享给其他玩家；所有人访问同一个公网地址，再创建或加入房间。公网连接刚建立时可能需要等待几秒。
 
 常用参数（可组合使用）：
 
@@ -64,8 +64,8 @@ cd D:\Bigarm\zaizai
 # 仅本地预览，不需要 cloudflared
 .\start-preview.cmd -LocalOnly
 
-# 3000 被其他服务占用时改用 3100，本地服务与隧道自动使用相同端口
-.\start-preview.cmd -Port 3100
+# 3100 被其他服务占用时改用 3200，本地服务与隧道自动使用相同端口
+.\start-preview.cmd -Port 3200
 
 # 不自动打开浏览器；本地和公网地址仍会输出
 .\start-preview.cmd -NoBrowser
@@ -82,12 +82,13 @@ Quick Tunnel 用于临时测试，地址每次启动都会变化，停止隧道�
 ```powershell
 # 终端 1：游戏服务
 cd D:\Bigarm\zaizai
+$env:PORT = '3100'
 node server/index.js
 ```
 
 ```powershell
 # 终端 2：cloudflared 已加入 PATH；未加入时请使用其完整路径
-cloudflared tunnel --url http://127.0.0.1:3000
+cloudflared tunnel --url http://127.0.0.1:3100
 ```
 
 手动启动时，如果 cloudflared 读取到已有的命名隧道配置而无法创建临时隧道，可使用本项目脚本的独立配置方式。手动启动的进程需在各自终端按 `Ctrl+C` 停止。

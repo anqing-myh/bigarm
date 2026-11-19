@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 65535)]
-    [int]$Port = 3000,
+    [int]$Port = 3100,
     [switch]$LocalOnly,
     [switch]$NoBrowser,
     [string]$CloudflaredPath = $env:CLOUDFLARED_PATH
@@ -66,7 +66,7 @@ try {
                 try { $client.EndConnect($pending) } catch { }
             }
             if ($client.Connected) {
-                throw "Port $Port is occupied by another service or a different app version. Use -Port 3100."
+                throw "Port $Port is occupied by another service or a different app version. Choose another port with -Port (for example, -Port 3200)."
             }
         } finally { $client.Close() }
 
