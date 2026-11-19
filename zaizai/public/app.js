@@ -270,6 +270,24 @@ function revealedMove(room,action){
   else if(action.target&&Object.keys(room.actions||{}).length>2)label+=' → '+(room.players.find(p=>p.id===action.target)?.name||'已离场玩家');
   return label;
 }
+function renderActionTable(room){
+  const players=[...room.players].sort((a,b)=>a.seat-b.seat),slots=players.length;
+  if(!slots)return '';
+  const selfIndex=Math.max(0,players.findIndex(p=>p.id===self.id));
+  const density=(Math.min(slots,8)-2)/6,orbitX=22+density*2,orbitY=15-density*1.5;
+  const width=Math.round(92-density*28),height=Math.round(66-density*20),font=Math.max(8,10-density*1.5);
+  const actions=players.map((p,i)=>{
+    const action=room.actions?.[p.id];
+    if(!action)return '';
+    const angle=Math.PI/2-(i-selfIndex)/slots*Math.PI*2;
+    const x=50+Math.cos(angle)*orbitX,y=50+Math.sin(angle)*orbitY;
+    const muted=room.result?.muted?.includes(p.id);
+    const description=revealedMove(room,action);
+    const status=[action.automatic?'自动':'',muted?'封锁':''].filter(Boolean).join(' · ');
+    return `<span class="table-action ${moves[action.move]?.color||''} ${muted?'muted':''}" data-player-id="${p.id}" title="${p.seat+1}号 · ${esc(description)}${status?' · '+status:''}" aria-label="${p.seat+1}号：${esc(description)}${status?' · '+status:''}" style="left:${x}%;top:${y}%;--table-action-width:${width}px;--table-action-height:${height}px;--table-action-font:${font}px"><span class="table-action-seat">${p.seat+1}号${status?` · ${esc(status)}`:''}</span><span class="table-action-icon">${esc(moves[action.move]?.icon||'')}</span><span class="table-action-move">${esc(description)}</span></span>`;
+  }).join('');
+  return `<div class="action-table" aria-label="本回合已公开招式">${actions}</div>`;
+}
 function renderSeats(room,inGame){
   const players=[...room.players].filter(p=>inGame||!p.left).sort((a,b)=>a.seat-b.seat);
   const slots=inGame?players.length:Math.max(room.capacity,players.length);
@@ -283,15 +301,13 @@ function renderSeats(room,inGame){
     const isMe=p.id===self.id,dead=inGame&&p.hp<=0;
     const canTarget=meAlive(room)&&((room.phase==='selecting'&&!room.ownAction&&moves[ui.move]?.target&&!isMe&&!dead)||(room.phase==='interrupt'&&room.ownAction?.move==='meteor'&&!room.interruptSubmitted.includes(self.id)&&!dead));
     const selected=inGame&&(room.phase==='interrupt'?ui.interruptTarget:ui.target)===p.id;
-    const action=['interrupt','reveal'].includes(room.phase)?room.actions?.[p.id]:null;
     const muted=inGame&&room.result?.muted?.includes(p.id);
     const delta=room.phase==='reveal'?room.result?.changes?.[p.id]:null;
     let bubble='';
     if(!inGame)bubble=`<span class="action-bubble readiness-bubble ${p.ready?'ready-bubble':'not-ready-bubble'}" data-ready="${p.ready}">${icon(p.ready?'check':'clock',11)} ${p.ready?'已准备':'未准备'}</span>`;
-    else if(action)bubble=`<span class="action-bubble ${moves[action.move]?.color} ${muted?'muted':''}">${esc(moves[action.move]?.icon)} ${esc(revealedMove(room,action))}${action.automatic?' · 自动':''}${muted?' ×':''}</span>`;
     else if(room.phase==='selecting'&&room.submitted.includes(p.id))bubble=`<span class="action-bubble locked">${icon('lock',11)} 已锁定</span>`;
     return `<button class="seat ${isMe?'is-me':''} ${dead?'is-dead':''} ${canTarget?'targetable':''} ${selected?'target-selected':''} ${muted?'is-muted':''}" style="left:${x}%;top:${y}%;--player-color:${PALETTE[p.seat%8]}" data-act="target" data-id="${p.id}" data-seat="${p.seat+1}" data-can-target="${canTarget?1:0}" aria-label="${p.seat+1}号 ${esc(p.name)}${isMe?'，你':''}${dead?'，已阵亡':inGame?'，生命 '+p.hp:p.ready?'，已准备':'，未准备'}">${bubble}<span class="avatar-shell">${avatar(p.seat,dead?'dead':'normal')}${room.hostId===p.id?'<span class="host-badge" title="房主">'+icon('crown',12)+'</span>':''}${!p.connected?'<span class="disconnected-badge" title="连接中">!</span>':''}${selected&&canTarget?'<span class="target-check">'+icon('check',12)+'</span>':''}</span><span class="seat-name"><span class="seat-number">${p.seat+1}号</span> ${esc(p.name)} ${isMe?'<b>你</b>':''}</span><span class="seat-detail" data-act="toggle-status" data-id="${p.id}" title="展开 / 收起状态栏">${playerStatus(p,!!ui.statusOpen[p.id])}</span>${delta?.damage?'<span class="damage-float">−'+delta.damage+' ♥</span>':delta?.healing?'<span class="heal-float">+'+delta.healing+' ♥</span>':''}</button>`;
-  }).join('');
+  }).join('')+(['interrupt','reveal'].includes(room.phase)?renderActionTable(room):'');
 }
 function meAlive(room){return room.players.some(p=>p.id===self.id&&p.hp>0);}
 function renderCenter(room,me){

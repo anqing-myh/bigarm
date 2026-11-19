@@ -52,6 +52,18 @@ async function checkAvatarsClear(page){
   const overlaps=await page.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat] .avatar-shell')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.closest('.seat').dataset.seat);});
   assert.deepEqual(overlaps,[],'玩家头像不与中央招式区重叠');
 }
+async function checkActionTable(page,count){
+  const result=await page.evaluate(()=>{const arena=document.querySelector('.arena').getBoundingClientRect(),intersects=(a,b)=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+.5&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+.5,items=[...document.querySelectorAll('.table-action')].map(el=>{const r=el.getBoundingClientRect(),seat=document.querySelector('.seat[data-id="'+el.dataset.playerId+'"] .avatar-shell').getBoundingClientRect(),style=getComputedStyle(el),centerX=r.left+r.width/2,centerY=r.top+r.height/2,avatarX=seat.left+seat.width/2,avatarY=seat.top+seat.height/2,centerRadius=Math.hypot((centerX-arena.left-arena.width/2)/arena.width,(centerY-arena.top-arena.height/2)/arena.height),avatarRadius=Math.hypot((avatarX-arena.left-arena.width/2)/arena.width,(avatarY-arena.top-arena.height/2)/arena.height),alignment=(centerX-arena.left-arena.width/2)*(avatarX-arena.left-arena.width/2)+(centerY-arena.top-arena.height/2)*(avatarY-arena.top-arena.height/2);return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,inside:r.left>=arena.left&&r.right<=arena.right&&r.top>=arena.top&&r.bottom<=arena.bottom,insideAvatarRing:centerRadius<avatarRadius&&alignment>0,avatarOverlap:intersects(r,seat),rectangular:r.width>r.height+8&&parseFloat(style.borderTopLeftRadius)>=5,seatLabel:!!el.querySelector('.table-action-seat')?.textContent.trim(),moveIcon:!!el.querySelector('.table-action-icon')?.textContent.trim()};});const overlaps=[];for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++)if(Math.min(items[i].right,items[j].right)>Math.max(items[i].left,items[j].left)+.5&&Math.min(items[i].bottom,items[j].bottom)>Math.max(items[i].top,items[j].top)+.5)overlaps.push([i,j]);return {items,overlaps,seatBubbles:document.querySelectorAll('.seat .action-bubble:not(.locked)').length};});
+  assert.equal(result.items.length,count,'每位玩家在头像内侧展示亮招');
+  assert.equal(result.seatBubbles,0,'亮招信息不堆在头像上方');
+  assert.ok(result.items.every(item=>item.inside),'亮招卡片完整留在战场范围：'+JSON.stringify(result.items));
+  assert.ok(result.items.every(item=>item.insideAvatarRing),'亮招卡片位于头像内侧');
+  assert.ok(result.items.every(item=>item.rectangular&&!item.avatarOverlap&&item.seatLabel&&item.moveIcon),'亮招为圆角矩形，显示座号与图标且不遮挡头像：'+JSON.stringify(result.items));
+  const expectedSize=count===8?[64,46]:[87,63];
+  assert.ok(result.items.every(item=>Math.abs(item.width-expectedSize[0])<1&&Math.abs(item.height-expectedSize[1])<1),'亮招卡片尺寸随人数缩放');
+  assert.equal(result.overlaps.length,0,'亮招矩形卡片之间不重叠：'+JSON.stringify({items:result.items,overlaps:result.overlaps}));
+  return result.items;
+}
 async function waitPhase(page, phase, round) {
   await page.waitForFunction(async ({ phase, round }) => {
     const response = await fetch('/api/state', { headers: { Authorization: 'Bearer ' + sessionStorage.getItem('zaizai-token') } });
@@ -137,6 +149,9 @@ try {
   const savedRoom=await a.evaluate(()=>structuredClone(state.room));
   await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);Object.assign(me,{energy:20,hammers:6,shields:6,guards:6});while(state.room.players.length<8){const i=state.room.players.length;state.room.players.push({...me,id:'layout-'+i,name:'玩家'+(i+1),seat:i});}render();});
   assert.equal(await a.locator('.move-card').count(),14);await checkPlayViewport(a);await checkRing(a,8);
+  await a.evaluate(()=>{state.room.phase='reveal';state.room.actions=Object.fromEntries(state.room.players.map(p=>[p.id,{move:'guard'}]));render();});
+  await checkActionTable(a,8);
+  await a.evaluate(()=>{state.room.phase='selecting';state.room.actions={};render();});
 
   assert.equal(await a.locator('.seat-resources').count(),8,'所有头像公开资源');
   await a.evaluate(()=>{const me=state.room.players.find(p=>p.id===self.id);me.bannedMove='charge';ui.move='charge';render();});
@@ -159,6 +174,9 @@ try {
     await checkAvatarsClear(a);
   }
   await a.setViewportSize({width:390,height:844});await checkPlayViewport(a);
+  await a.evaluate(()=>{state.room.phase='reveal';state.room.actions=Object.fromEntries(state.room.players.map(p=>[p.id,{move:'guard'}]));render();});
+  await checkActionTable(a,8);
+  await a.evaluate(()=>{state.room.phase='selecting';state.room.actions={};render();});
   await screenshot(a,'16-eight-players-mobile');
   await checkAvatarsClear(a);
   await a.locator('.seat[data-seat="3"] .seat-detail').click();
@@ -184,16 +202,21 @@ try {
   const selectingRoom=await a.evaluate(()=>structuredClone(state.room));
   for(const move of ['gun','hammer','darkAngel','fireball','shieldHammer']){
     await a.evaluate(({move,idB,idC})=>{
-      state.room.phase='reveal';state.room.actions={[self.id]:{move,target:idB},[idB]:{move:'gold',reflect:'fireball'},[idC]:{move:'guard'}};
+      state.room.players=state.room.players.slice(0,3);state.room.phase='reveal';state.room.actions={[self.id]:{move,target:idB,automatic:true},[idB]:{move:'gold',reflect:'fireball'},[idC]:{move:'guard'}};state.room.result={...(state.room.result||{}),muted:[idC]};
       state.room.players.forEach(p=>p.bannedMove='charge');render();
     },{move,idB,idC});
-    assert.match(await a.locator('.seat.is-me .action-bubble').textContent(),new RegExp(move==='shieldHammer'?'锤带盾 → 小蓝测试':({gun:'枪',hammer:'锤',darkAngel:'黑天使',fireball:'火球'}[move])+' → 小蓝测试'));
-    assert.match(await a.locator('.seat[data-id="'+idB+'"] .action-bubble').textContent(),/金盾：火球/);
-    assert.equal(await a.locator('.seat-ban').count(),8);
+    await checkActionTable(a,3);
+    assert.match(await a.locator('.table-action[data-player-id="'+idA+'"]').textContent(),new RegExp(move==='shieldHammer'?'锤带盾 → 小蓝测试':({gun:'枪',hammer:'锤',darkAngel:'黑天使',fireball:'火球'}[move])+' → 小蓝测试'));
+    assert.match(await a.locator('.table-action[data-player-id="'+idB+'"]').textContent(),/金盾：火球/);
+    assert.match(await a.locator('.table-action[data-player-id="'+idA+'"] .table-action-seat').textContent(),/自动/);
+    assert.match(await a.locator('.table-action[data-player-id="'+idC+'"] .table-action-seat').textContent(),/封锁/);
+    assert.equal(await a.locator('.seat-ban').count(),3);
   }
   await a.setViewportSize({width:390,height:844});await screenshot(a,'18-revealed-targets-and-resources-mobile');
+  await a.evaluate(({players,idA,idB,idC})=>{state.room.players=players;state.room.phase='reveal';state.room.actions={[idA]:{move:'gun',target:idB,automatic:true},[idB]:{move:'gold',reflect:'fireball'},[idC]:{move:'guard'}};state.room.result={...(state.room.result||{}),muted:[idC]};render();},{players:savedRoom.players,idA,idB,idC});
+  await checkActionTable(a,3);
   assert.equal(await a.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  const bubbled=await a.locator('.action-bubble').evaluateAll(els=>els.every(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&el.scrollWidth<=el.clientWidth+1;}));
+  const bubbled=await a.locator('.table-action').evaluateAll(els=>els.every(el=>{const r=el.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&el.scrollWidth<=el.clientWidth+1;}));
   assert.equal(bubbled,true,'亮招目标与金盾反弹信息完整显示且不超出屏幕');
   await a.evaluate(room=>{state.room=room;render();},selectingRoom);
   await a.setViewportSize({width:1366,height:768});
@@ -213,6 +236,7 @@ try {
   await clickMove(c, 'charge');
   await waitPhase(a, 'interrupt', 4);
   await a.locator('.interrupt-panel').waitFor();
+  await checkActionTable(a,3);
   await screenshot(a, '07-meteor-interrupt');
   await a.locator(`[data-act=target][data-id="${idC}"]`).click();
   await a.locator('[data-act=interrupt]').click();

@@ -150,3 +150,13 @@ dialog .battle-log .log-content{max-height:min(52dvh,480px)}
   .game-room .seat-ban{max-width:100px}
   .game-room .action-bubble{max-width:110px;font-size:8px;line-height:1.4}
 }
+
+/* Revealed moves sit between the arena center and each avatar. */
+.action-table{position:absolute;inset:0;z-index:5;pointer-events:none}
+.table-action{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-sizing:border-box;width:var(--table-action-width);height:var(--table-action-height);padding:4px;border:1px solid color-mix(in srgb,var(--move-color,var(--accent)) 58%,#33402f);border-radius:8px;transform:translate(-50%,-50%);background:color-mix(in srgb,var(--move-color,var(--accent)) 22%,#19221a);color:var(--move-color,var(--accent));font-size:var(--table-action-font);line-height:1.1;text-align:center;box-shadow:0 4px 14px #0006;backdrop-filter:blur(5px);animation:tableActionIn .2s ease-out}
+.table-action-seat{max-width:100%;overflow:hidden;white-space:nowrap;font-size:.7em;color:#b5c8a8;line-height:1.1}
+.table-action-icon{font-size:1.35em;line-height:1}
+.table-action-move{display:-webkit-box;max-width:100%;overflow:hidden;font-weight:650;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.table-action.muted{text-decoration:line-through;color:#c2a9d2;opacity:.82}
+@keyframes tableActionIn{from{opacity:0}to{opacity:1}}
+@media(max-width:600px){.table-action{padding:3px;border-radius:7px}.table-action-seat{font-size:.66em}}
