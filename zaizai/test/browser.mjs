@@ -53,14 +53,14 @@ async function checkAvatarsClear(page){
   assert.deepEqual(overlaps,[],'玩家头像不与中央招式区重叠');
 }
 async function checkActionTable(page,count){
-  const result=await page.evaluate(()=>{const arena=document.querySelector('.arena').getBoundingClientRect(),intersects=(a,b)=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+.5&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+.5,items=[...document.querySelectorAll('.table-action')].map(el=>{const r=el.getBoundingClientRect(),seat=document.querySelector('.seat[data-id="'+el.dataset.playerId+'"] .avatar-shell').getBoundingClientRect(),style=getComputedStyle(el),centerX=r.left+r.width/2,centerY=r.top+r.height/2,avatarX=seat.left+seat.width/2,avatarY=seat.top+seat.height/2,centerRadius=Math.hypot((centerX-arena.left-arena.width/2)/arena.width,(centerY-arena.top-arena.height/2)/arena.height),avatarRadius=Math.hypot((avatarX-arena.left-arena.width/2)/arena.width,(avatarY-arena.top-arena.height/2)/arena.height),alignment=(centerX-arena.left-arena.width/2)*(avatarX-arena.left-arena.width/2)+(centerY-arena.top-arena.height/2)*(avatarY-arena.top-arena.height/2);return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,inside:r.left>=arena.left&&r.right<=arena.right&&r.top>=arena.top&&r.bottom<=arena.bottom,insideAvatarRing:centerRadius<avatarRadius&&alignment>0,avatarOverlap:intersects(r,seat),rectangular:r.width>r.height+8&&parseFloat(style.borderTopLeftRadius)>=5,seatLabel:!!el.querySelector('.table-action-seat')?.textContent.trim(),moveIcon:!!el.querySelector('.table-action-icon')?.textContent.trim()};});const overlaps=[];for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++)if(Math.min(items[i].right,items[j].right)>Math.max(items[i].left,items[j].left)+.5&&Math.min(items[i].bottom,items[j].bottom)>Math.max(items[i].top,items[j].top)+.5)overlaps.push([i,j]);return {items,overlaps,seatBubbles:document.querySelectorAll('.seat .action-bubble:not(.locked)').length};});
+  const result=await page.evaluate(()=>{const arena=document.querySelector('.arena').getBoundingClientRect(),intersects=(a,b)=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+.5&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+.5,items=[...document.querySelectorAll('.table-action')].map(el=>{const r=el.getBoundingClientRect(),seat=document.querySelector('.seat[data-id="'+el.dataset.playerId+'"] .avatar-shell').getBoundingClientRect(),style=getComputedStyle(el),centerX=r.left+r.width/2,centerY=r.top+r.height/2,avatarX=seat.left+seat.width/2,avatarY=seat.top+seat.height/2,centerRadius=Math.hypot((centerX-arena.left-arena.width/2)/arena.width,(centerY-arena.top-arena.height/2)/arena.height),avatarRadius=Math.hypot((avatarX-arena.left-arena.width/2)/arena.width,(avatarY-arena.top-arena.height/2)/arena.height),alignment=(centerX-arena.left-arena.width/2)*(avatarX-arena.left-arena.width/2)+(centerY-arena.top-arena.height/2)*(avatarY-arena.top-arena.height/2);return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,fontSize:parseFloat(style.fontSize),inside:r.left>=arena.left&&r.right<=arena.right&&r.top>=arena.top&&r.bottom<=arena.bottom,insideAvatarRing:centerRadius<avatarRadius&&alignment>0,avatarOverlap:intersects(r,seat),rectangular:Math.abs(r.width-r.height)>8&&parseFloat(style.borderTopLeftRadius)>=5,expanded:el.classList.contains('expanded'),seatLabel:!!el.querySelector('.table-action-seat')?.textContent.trim(),moveIcon:!!el.querySelector('.table-action-icon')?.textContent.trim()};});const overlaps=[];for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++)if(Math.min(items[i].right,items[j].right)>Math.max(items[i].left,items[j].left)+.5&&Math.min(items[i].bottom,items[j].bottom)>Math.max(items[i].top,items[j].top)+.5)overlaps.push([i,j]);return {items,overlaps,seatBubbles:document.querySelectorAll('.seat .action-bubble:not(.locked)').length};});
   assert.equal(result.items.length,count,'每位玩家在头像内侧展示亮招');
   assert.equal(result.seatBubbles,0,'亮招信息不堆在头像上方');
   assert.ok(result.items.every(item=>item.inside),'亮招卡片完整留在战场范围：'+JSON.stringify(result.items));
   assert.ok(result.items.every(item=>item.insideAvatarRing),'亮招卡片位于头像内侧');
-  assert.ok(result.items.every(item=>item.rectangular&&!item.avatarOverlap&&item.seatLabel&&item.moveIcon),'亮招为圆角矩形，显示座号与图标且不遮挡头像：'+JSON.stringify(result.items));
+  assert.ok(result.items.every(item=>item.rectangular&&item.fontSize>=12&&!item.avatarOverlap&&item.seatLabel&&item.moveIcon),'亮招为圆角矩形，显示放大后的文字且不遮挡头像：'+JSON.stringify(result.items));
   const expectedSize=count===8?[64,46]:[87,63];
-  assert.ok(result.items.every(item=>Math.abs(item.width-expectedSize[0])<1&&Math.abs(item.height-expectedSize[1])<1),'亮招卡片尺寸随人数缩放');
+  assert.ok(result.items.filter(item=>!item.expanded).every(item=>Math.abs(item.width-expectedSize[0])<1&&Math.abs(item.height-expectedSize[1])<1),'普通亮招卡片保持基础尺寸');
   assert.equal(result.overlaps.length,0,'亮招矩形卡片之间不重叠：'+JSON.stringify({items:result.items,overlaps:result.overlaps}));
   return result.items;
 }
@@ -176,6 +176,10 @@ try {
   await a.setViewportSize({width:390,height:844});await checkPlayViewport(a);
   await a.evaluate(()=>{state.room.phase='reveal';state.room.actions=Object.fromEntries(state.room.players.map(p=>[p.id,{move:'guard'}]));render();});
   await checkActionTable(a,8);
+  await a.evaluate(()=>{const players=state.room.players;players[1].name='小蓝测试这是一个很长的昵称';state.room.actions=Object.fromEntries(players.map(p=>[p.id,{move:'guard'}]));state.room.actions[players[0].id]={move:'gun',target:players[1].id};render();});
+  await checkActionTable(a,8);
+  const expandedMobile=await a.locator('.table-action.expanded .table-action-move').evaluate(el=>el.scrollHeight<=el.clientHeight+1);
+  assert.equal(expandedMobile,true,'八人手机局长目标昵称完整显示在增高卡片内：'+JSON.stringify(await a.locator('.table-action.expanded .table-action-move').evaluate(el=>({text:el.textContent,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,rect:el.getBoundingClientRect().toJSON(),card:el.closest('.table-action').getBoundingClientRect().toJSON(),lineClamp:getComputedStyle(el).webkitLineClamp}))));
   await a.evaluate(()=>{state.room.phase='selecting';state.room.actions={};render();});
   await screenshot(a,'16-eight-players-mobile');
   await checkAvatarsClear(a);
@@ -202,11 +206,13 @@ try {
   const selectingRoom=await a.evaluate(()=>structuredClone(state.room));
   for(const move of ['gun','hammer','darkAngel','fireball','shieldHammer']){
     await a.evaluate(({move,idB,idC})=>{
-      state.room.players=state.room.players.slice(0,3);state.room.phase='reveal';state.room.actions={[self.id]:{move,target:idB,automatic:true},[idB]:{move:'gold',reflect:'fireball'},[idC]:{move:'guard'}};state.room.result={...(state.room.result||{}),muted:[idC]};
+      state.room.players=state.room.players.slice(0,3);state.room.players.find(p=>p.id===idB).name='小蓝测试这是一个很长的昵称';state.room.phase='reveal';state.room.actions={[self.id]:{move,target:idB,automatic:true},[idB]:{move:'gold',reflect:'fireball'},[idC]:{move:'guard'}};state.room.result={...(state.room.result||{}),muted:[idC]};
       state.room.players.forEach(p=>p.bannedMove='charge');render();
     },{move,idB,idC});
     await checkActionTable(a,3);
+    assert.equal(await a.locator('.table-action[data-player-id="'+idA+'"]').evaluate(el=>el.classList.contains('expanded')&&el.getBoundingClientRect().width>87),true,'三人桌面局长目标昵称扩宽卡片');
     assert.match(await a.locator('.table-action[data-player-id="'+idA+'"]').textContent(),new RegExp(move==='shieldHammer'?'锤带盾 → 小蓝测试':({gun:'枪',hammer:'锤',darkAngel:'黑天使',fireball:'火球'}[move])+' → 小蓝测试'));
+    assert.match(await a.locator('.table-action[data-player-id="'+idA+'"]').textContent(),/这是一个很长的昵称/);
     assert.match(await a.locator('.table-action[data-player-id="'+idB+'"]').textContent(),/金盾：火球/);
     assert.match(await a.locator('.table-action[data-player-id="'+idA+'"] .table-action-seat').textContent(),/自动/);
     assert.match(await a.locator('.table-action[data-player-id="'+idC+'"] .table-action-seat').textContent(),/封锁/);

@@ -275,7 +275,7 @@ function renderActionTable(room){
   if(!slots)return '';
   const selfIndex=Math.max(0,players.findIndex(p=>p.id===self.id));
   const density=(Math.min(slots,8)-2)/6,orbitX=22+density*2,orbitY=15-density*1.5;
-  const width=Math.round(92-density*28),height=Math.round(66-density*20),font=Math.max(8,10-density*1.5);
+  const width=Math.round(92-density*28),height=Math.round(66-density*20),font=Math.round(14-density*2);
   const actions=players.map((p,i)=>{
     const action=room.actions?.[p.id];
     if(!action)return '';
@@ -284,7 +284,13 @@ function renderActionTable(room){
     const muted=room.result?.muted?.includes(p.id);
     const description=revealedMove(room,action);
     const status=[action.automatic?'自动':'',muted?'封锁':''].filter(Boolean).join(' · ');
-    return `<span class="table-action ${moves[action.move]?.color||''} ${muted?'muted':''}" data-player-id="${p.id}" title="${p.seat+1}号 · ${esc(description)}${status?' · '+status:''}" aria-label="${p.seat+1}号：${esc(description)}${status?' · '+status:''}" style="left:${x}%;top:${y}%;--table-action-width:${width}px;--table-action-height:${height}px;--table-action-font:${font}px"><span class="table-action-seat">${p.seat+1}号${status?` · ${esc(status)}`:''}</span><span class="table-action-icon">${esc(moves[action.move]?.icon||'')}</span><span class="table-action-move">${esc(description)}</span></span>`;
+    const textLength=[...description].length;
+    const expanded=description.includes('→');
+    const actionWidth=width+(expanded&&slots<=4?Math.min(90,24+Math.max(0,textLength-8)*5):0);
+    const lineCapacity=Math.max(2,Math.floor((actionWidth-12)/(font*.9)));
+    const textLines=expanded?Math.max(1,Math.ceil(textLength/lineCapacity)):1;
+    const actionHeight=height+(expanded?4+Math.max(0,textLines-1)*Math.ceil(font*1.05):0);
+    return `<span class="table-action ${moves[action.move]?.color||''} ${muted?'muted':''} ${expanded?'expanded':''}" data-player-id="${p.id}" title="${p.seat+1}号 · ${esc(description)}${status?' · '+status:''}" aria-label="${p.seat+1}号：${esc(description)}${status?' · '+status:''}" style="left:${x}%;top:${y}%;--table-action-width:${actionWidth}px;--table-action-height:${actionHeight}px;--table-action-font:${font}px;--table-action-lines:${textLines}"><span class="table-action-seat">${p.seat+1}号${status?` · ${esc(status)}`:''}</span><span class="table-action-icon">${esc(moves[action.move]?.icon||'')}</span><span class="table-action-move">${esc(description)}</span></span>`;
   }).join('');
   return `<div class="action-table" aria-label="本回合已公开招式">${actions}</div>`;
 }
