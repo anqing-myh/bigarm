@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MOVES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction } from '../server/game.js';
+import { MOVES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction, automaticInterrupt } from '../server/game.js';
 
 const p = (id, options = {}) => ({ id, name: id.toUpperCase(), hp: 1, energy: 10, hammers: 3, shields: 3, seat: id.charCodeAt(0)-97, ...options });
 const act = (move, target, reflect) => ({ move, ...(target ? { target } : {}), ...(reflect ? { reflect } : {}) });
@@ -8,6 +8,15 @@ const battle = (players, actions, interrupts) => resolveRound(payCosts(players, 
 const get = (result, id) => result.players.find(p => p.id === id);
 
 test('文档中 14 种招式均已定义', () => { assert.equal(Object.keys(MOVES).length, 14); });
+
+test('流星锤超时按座号向右选存活邻居，跳过阵亡离场并首尾相接', () => {
+  const players = [p('e'), p('c', { hp: 0 }), p('a'), p('d', { left: true }), p('b')];
+  assert.equal(automaticInterrupt(players, 'a'), 'b');
+  assert.equal(automaticInterrupt(players, 'b'), 'e');
+  assert.equal(automaticInterrupt(players, 'e'), 'a');
+  assert.equal(automaticInterrupt(players, 'c'), null);
+  assert.equal(automaticInterrupt([p('a'), p('b', { hp: 0 })], 'a'), 'a');
+});
 test('验证目标、资源、阵亡和反弹类型，拒绝非法输入', () => {
   const players = [p('a', { energy: 0 }), p('b'), p('c', { hp: 0 })];
   assert.throws(() => validateAction(players, 'a', act('gun', 'b')), /不足/);
@@ -83,8 +92,8 @@ test('海浪消耗圣盾并群攻；明确的火球反弹优先于点数压制',
   assert.equal(get(r,'a').shields,0);assert.equal(get(r,'a').hp,1);assert.equal(get(r,'b').hp,-1);assert.equal(get(r,'c').hp,-1);
   assert.ok(r.logs.some(log=>log.type==='reflect'&&log.source==='a'&&log.target==='b'));
 });
-test('流星锤破圣盾和金盾，其他玩家不受破盾伤害', () => {
-  const r=battle([p('a'),p('b'),p('c'),p('d')],{a:act('meteor'),b:act('holy'),c:act('gold',null,'gun'),d:act('charge')});
+test('流星锤封锁其他玩家后仍破圣盾和金盾，其他玩家不受破盾伤害', () => {
+  const r=battle([p('a'),p('b'),p('c'),p('d')],{a:act('meteor'),b:act('holy'),c:act('gold',null,'gun'),d:act('charge')},{a:'d'});
   assert.equal(get(r,'a').hammers,0);assert.equal(get(r,'b').hp,0);assert.equal(get(r,'c').hp,0);assert.equal(get(r,'d').hp,1);
 });
 test('流星锤抵挡地震海浪；可以封锁攻击，消耗照扣', () => {
@@ -330,7 +339,7 @@ test('被流星锤封锁的同点数攻击不能抵消对手攻击，资源仍�
 });
 
 
-test('流星锤封锁圣盾或金盾后不破盾；封锁自己也不攻击，跳过则仍破盾', () => {
+test('流星锤封锁圣盾或金盾后不破盾；封锁自己也不攻击，封锁其他玩家仍破盾', () => {
   for(const move of ['holy','gold']){
     const players=[p('a'),p('b')],actions={a:act('meteor'),b:act(move,null,'gun')};
     for(const target of ['a','b']){
@@ -341,12 +350,12 @@ test('流星锤封锁圣盾或金盾后不破盾；封锁自己也不攻击，�
       assert.equal(get(r,'b').energy,9);
       assert.equal(get(r,'b').shields,move==='holy'&&target==='a'?4:3);
     }
-    assert.equal(get(battle(players,actions),'b').hp,0,move+' active');
+    assert.equal(get(battle([...players,p('c')],{...actions,c:act('charge')},{a:'c'}),'b').hp,0,move+' active');
   }
 });
 
 test('被任意流星锤封锁的盾不会触发其他流星锤的破盾伤害', () => {
-  const r=battle([p('a'),p('b'),p('c')],{a:act('meteor'),b:act('meteor'),c:act('holy')},{a:'c',b:null});
+  const r=battle([p('a'),p('b'),p('c')],{a:act('meteor'),b:act('meteor'),c:act('holy')},{a:'c',b:'c'});
   assert.equal(get(r,'c').hp,1);assert.equal(get(r,'c').shields,3);
   assert.equal(r.changes.c.damage,0);assert.equal(r.hasDamage,false);
 });

@@ -242,9 +242,13 @@ try {
   await clickMove(c, 'charge');
   await waitPhase(a, 'interrupt', 4);
   await a.locator('.interrupt-panel').waitFor();
+  assert.equal(await a.locator('[data-act=skip-interrupt]').count(),0,'流星锤不提供跳过封锁');
+  assert.equal(await a.locator('[data-act=interrupt]').isDisabled(),true,'未选择目标时不能确认封锁');
+  assert.match(await a.locator('.interrupt-panel').textContent(),/超时封锁右侧相邻存活玩家/);
   await checkActionTable(a,3);
   await screenshot(a, '07-meteor-interrupt');
   await a.locator(`[data-act=target][data-id="${idC}"]`).click();
+  assert.equal(await a.locator('[data-act=interrupt]').isEnabled(),true,'选择存活玩家后可确认封锁');
   await a.locator('[data-act=interrupt]').click();
   await waitPhase(a, 'reveal', 4);
   let room = (await info(a)).room;

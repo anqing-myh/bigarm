@@ -11,7 +11,7 @@ export const MOVES = Object.freeze({
   holy: { name: '圣盾', icon: '⬡', cost: { energy: 1 }, description: '抵挡除黑天使、流星锤破盾外的攻击，并获得 1 个圣盾。', color: 'blue' },
   gold: { name: '金盾', icon: '◈', cost: { energy: 1 }, reflect: true, description: '预判一种攻击，反弹本回合命中自己的该类攻击。不能反弹流星锤。', color: 'amber' },
   wave: { name: '海浪', icon: '≋', cost: { shields: 3 }, attack: 3, description: '对所有其他存活玩家造成 1 点伤害，反弹火球。攻击点数 3。', color: 'cyan' },
-  meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对仍生效的圣盾或金盾造成 1 伤害；封锁盾后不造成破盾伤害。亮招后可封锁任意一人的招式，资源照常消耗。', color: 'violet' },
+  meteor: { name: '流星锤', icon: '✹', cost: { hammers: 3 }, description: '抵挡地震、海浪；对仍生效的圣盾或金盾造成 1 伤害；封锁盾后不造成破盾伤害。亮招后必须封锁一名存活玩家（可选自己）的招式；超时默认封锁右侧相邻存活玩家，资源照常消耗。', color: 'violet' },
   avalanche: { name: '雪崩', icon: '❄', cost: { guards: 3 }, description: '从下回合起，自己禁用防，其他玩家各自禁用本回合所选招式，直到新的雪崩覆盖限制。', color: 'cyan' },
 });
 
@@ -47,6 +47,14 @@ export function applyAvalanche(players, avalanche) {
 export function automaticAction(players, playerId) {
   const player = players.find(p => p.id === playerId);
   return { ...validateAction(players, playerId, { move: player?.bannedMove === 'charge' ? 'guard' : 'charge' }), automatic: true };
+}
+
+export function automaticInterrupt(players, playerId) {
+  // From the player's bottom seat, increasing seat numbers run to the right.
+  const alive = players.filter(p => p.hp > 0 && !p.left).sort((a, b) => a.seat - b.seat);
+  const index = alive.findIndex(p => p.id === playerId);
+  if (index < 0) return null;
+  return alive[(index + 1) % alive.length].id;
 }
 
 // Charge all costs before interrupts. Muting cancels effects, never the cost.

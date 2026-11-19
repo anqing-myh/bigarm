@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { MOVES, REFLECTABLE, RESOURCE_NAMES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction } from './game.js';
+import { MOVES, REFLECTABLE, RESOURCE_NAMES, validateAction, payCosts, resolveRound, applyAvalanche, automaticAction, automaticInterrupt } from './game.js';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const SELECTION_MS = Number(process.env.SELECTION_MS) || 15000;
@@ -104,6 +104,11 @@ function finishGame(room, result) {
 }
 function settle(room) {
   clearTimeout(room.timer);
+  for (const caster of room.players.filter(p => p.hp > 0 && !p.left && room.actions[p.id]?.move === 'meteor')) {
+    if (!room.players.some(p => p.id === room.interrupts[caster.id] && p.hp > 0 && !p.left)) {
+      room.interrupts[caster.id] = automaticInterrupt(room.players, caster.id);
+    }
+  }
   const result = resolveRound(room.players, room.actions, room.interrupts);
   room.players = result.players;
   if (result.avalanche) room.pendingAvalanche = result.avalanche;
@@ -324,7 +329,7 @@ export function createServer() {
             const caster = room.players.find(p => p.id === session.id && p.hp > 0);
             if (!caster) fail('你已阵亡，正在观战。');
             if (Object.hasOwn(room.interrupts, session.id)) fail('已经确认封锁目标。');
-            if (body.target !== null && !room.players.some(p => p.id === body.target && p.hp > 0)) fail('请选择存活目标。');
+            if (!room.players.some(p => p.id === body.target && p.hp > 0 && !p.left)) fail('必须选择一名存活玩家作为封锁目标。');
             room.interrupts[session.id] = body.target;
             if (room.players.filter(p => p.hp > 0 && room.actions[p.id]?.move === 'meteor').every(p => Object.hasOwn(room.interrupts, p.id))) settle(room);
             break;

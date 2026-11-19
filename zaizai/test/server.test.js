@@ -304,6 +304,52 @@ test('流星锤联机：封锁对方圣盾后不破盾，双方均不受伤', {t
   assert.equal(room.result.hasDamage,false);assert.equal(room.result.finished,false);
 });
 
+test('流星锤必须选择目标；超时向右跳过离场者并绕回，保留手动封锁', {timeout:28000}, async t=>{
+  const server=createServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  const base='http://127.0.0.1:'+server.address().port+'/api',clients=[];
+  async function req(route,token,body,expected=200){
+    const response=await fetch(base+route,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+    const data=await response.json();assert.equal(response.status,expected,JSON.stringify(data));return data;
+  }
+  t.after(async()=>{for(const c of clients)await req('/rooms/leave',c.token,{});server.closeAllConnections();await new Promise(r=>server.close(r));});
+  for(const name of ['右侧起点','将要离场','手动封锁','末位流星']){
+    const c=await req('/session',null,{name});clients.push(c);await req('/state?poll=1',c.token);
+  }
+  const [a,b,c,d]=clients,post=(client,route,body={})=>req(route,client.token,body);
+  const state=async()=>(await req('/state?poll=1',a.token)).room;
+  async function wait(phase,round,timeout=4000){
+    const deadline=Date.now()+timeout;
+    while(Date.now()<deadline){const room=await state();if(room.phase===phase&&room.round===round)return room;await delay(25);}
+    throw Error('等待流星锤阶段超时：'+phase);
+  }
+  await post(a,'/rooms/create',{capacity:4});const roomId=(await state()).id;
+  for(const client of [b,c,d])await post(client,'/rooms/join',{roomId});
+  for(const client of clients)await post(client,'/rooms/ready');
+  for(let round=1;round<=3;round++){
+    await wait('selecting',round);
+    for(const client of [a,c,d])await post(client,'/game/action',{round,move:'hammer',target:b.self.id});
+    await post(b,'/game/action',{round,move:'charge'});
+  }
+  await wait('selecting',4);
+  for(const client of [a,c,d])await post(client,'/game/action',{round:4,move:'meteor'});
+  await post(b,'/game/action',{round:4,move:'charge'});
+  const interrupt=await wait('interrupt',4);
+  assert.ok(interrupt.deadline-Date.now()>11000,'封锁阶段仍为 12 秒');
+  for(const target of [null,undefined,'','missing-player']){
+    await req('/game/interrupt',a.token,{round:4,target},400);
+  }
+  assert.deepEqual((await state()).interruptSubmitted,[],'空目标不能冒充已提交');
+  await post(c,'/game/interrupt',{round:4,target:c.self.id});
+  await req('/game/interrupt',c.token,{round:4,target:d.self.id},400);
+  await post(a,'/game/interrupt',{round:4,target:b.self.id});
+  await post(b,'/rooms/leave');
+  await req('/game/interrupt',a.token,{round:4,target:b.self.id},400);
+  const room=await wait('reveal',4,14000);
+  assert.deepEqual(room.interrupts,{[c.self.id]:c.self.id,[a.self.id]:c.self.id,[d.self.id]:a.self.id});
+  assert.deepEqual(new Set(room.result.muted),new Set([a.self.id,c.self.id]),'所有封锁同时生效');
+  assert.ok(room.players.filter(p=>!p.left).every(p=>p.hammers===0),'手动与自动封锁都消耗流星锤');
+});
+
 test('选招默认 15 秒，超时自动出招后正常进入结算', {timeout:21000}, async t=>{
   const server=createServer();server.listen(0,'127.0.0.1');await once(server,'listening');
   const base='http://127.0.0.1:'+server.address().port+'/api',clients=[];
