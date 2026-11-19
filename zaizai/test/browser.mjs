@@ -48,6 +48,10 @@ async function checkPlayViewport(page){
   const result=await page.evaluate(()=>{const rect=s=>document.querySelector(s).getBoundingClientRect();const arena=rect('.battle-panel'),controls=rect('.arsenal');return {arenaVisible:arena.top>=0&&arena.bottom<=innerHeight,controlsVisible:controls.top>=0&&controls.bottom<=innerHeight,inside:controls.left>=arena.left&&controls.right<=arena.right&&controls.top>=arena.top&&controls.bottom<=arena.bottom};});
   assert.ok(result.arenaVisible&&result.controlsVisible&&result.inside,'环形战场与中央可用招式完整同屏，无需滚动');
 }
+async function checkAvatarsClear(page){
+  const overlaps=await page.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat] .avatar-shell')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.closest('.seat').dataset.seat);});
+  assert.deepEqual(overlaps,[],'玩家头像不与中央招式区重叠');
+}
 async function waitPhase(page, phase, round) {
   await page.waitForFunction(async ({ phase, round }) => {
     const response = await fetch('/api/state', { headers: { Authorization: 'Bearer ' + sessionStorage.getItem('zaizai-token') } });
@@ -68,9 +72,10 @@ try {
   const [a, b, c] = pages;
   await a.goto(base);
   await a.getByRole('heading', { name: /蓄一手/ }).waitFor();
-  await a.locator('#rules-open').click();
+  await a.locator('.welcome [data-act=rules]').click();
   await a.locator('#modal .rule-move').last().waitFor();
   assert.equal(await a.locator('#modal .rule-move').count(),14,'未登录也能查看全部 14 个招式');
+  assert.ok(await a.locator('#modal .rule-move p b').count()>0,'玩法手册强调招式说明中的数字');
   await a.locator('[data-act=close-modal]').click();
   await screenshot(a, '01-welcome-desktop');
   await a.setViewportSize({ width: 390, height: 844 });
@@ -99,6 +104,12 @@ try {
   await a.waitForTimeout(150);
   assert.equal((await info(b)).room.capacity, 8);
   for(const page of pages){await checkRing(page,3);assert.equal(await page.locator('.not-ready-bubble').count(),3);}
+  assert.equal(await a.locator('.seat-extra:not(.hidden)').count(),0,'头像资源默认折叠');
+  await a.locator('.seat.is-me .seat-detail').click();
+  assert.equal(await a.locator('.seat.is-me .seat-extra:not(.hidden)').count(),1,'可展开自己的公开资源');
+  assert.match(await a.locator('.seat.is-me .seat-resources').textContent(),/圣盾 0.*锤 0.*防 0/);
+  await a.locator('.seat.is-me .seat-detail').click();
+  assert.equal(await a.locator('.seat-extra:not(.hidden)').count(),0,'可收起头像资源');
   await checkArenaCorners(a);await checkArenaFooter(a);
   await screenshot(a, '04-room-waiting');
   await a.setViewportSize({ width: 390, height: 844 });
@@ -114,6 +125,10 @@ try {
   await a.locator('[data-act=move][data-id=hammer]').click();
   assert.equal(await a.locator('[data-act=submit-action]').isDisabled(),true,'三名存活玩家时仍须手动选择目标');
   assert.equal(await a.locator('.seat.target-selected').count(),0);
+  await a.locator('.seat[data-id="'+idB+'"] .seat-detail').click();
+  assert.equal(await a.locator('.seat[data-id="'+idB+'"] .seat-extra:not(.hidden)').count(),1,'可展开其他玩家的状态栏');
+  assert.equal(await a.locator('.seat.target-selected').count(),0,'点击状态栏不会误选攻击目标');
+  await a.locator('.seat[data-id="'+idB+'"] .seat-detail').click();
   await a.locator('[data-act=move][data-id=charge]').click();
   assert.equal(await a.locator('.move-card').count(),3,'初始只显示仔、防、锤三种可用招式');
   assert.equal(await a.locator('.log-tabs').count(),0,'战报不再区分本回合和历史标签');
@@ -141,29 +156,26 @@ try {
   for(const id of await a.locator('.move-card').evaluateAll(els=>els.map(el=>el.dataset.id))){
     await a.evaluate(id=>{ui.move=id;render();},id);
     await checkPlayViewport(a);
-    const overlaps=await a.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat]')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.dataset.seat);});
-    if(overlaps.length)await screenshot(a,'layout-desktop-failure-'+id);
-    assert.deepEqual(overlaps,[],'Desktop selecting '+id+' keeps avatars clear');
+    await checkAvatarsClear(a);
   }
   await a.setViewportSize({width:390,height:844});await checkPlayViewport(a);
   await screenshot(a,'16-eight-players-mobile');
-  const overlaps=await a.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat]')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.dataset.seat);});
-  assert.deepEqual(overlaps,[],'手机上 14 种招式与 8 名玩家头像不重叠');
+  await checkAvatarsClear(a);
+  await a.locator('.seat[data-seat="3"] .seat-detail').click();
+  const expandedOverlap=await a.evaluate(()=>{const d=document.querySelector('.seat[data-seat="3"] .seat-detail').getBoundingClientRect();return [...document.querySelectorAll('.arena-controls .move-card,.arena-controls .action-bar')].some(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,d.right)>Math.max(r.left,d.left)&&Math.min(r.bottom,d.bottom)>Math.max(r.top,d.top);});});
+  assert.equal(expandedOverlap,false,'手机上单个展开的状态栏不遮挡中央招式区');
+  await a.locator('.seat[data-seat="3"] .seat-detail').click();
   for(const id of await a.locator('.move-card').evaluateAll(els=>els.map(el=>el.dataset.id))){
     await a.evaluate(id=>{ui.move=id;ui.target=null;render();},id);
     await checkPlayViewport(a);
-    const intersecting=await a.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat]')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.dataset.seat);});
-    if(intersecting.length)await screenshot(a,'layout-failure-'+id);
-    assert.deepEqual(intersecting,[],'Selecting '+id+' keeps all avatars clear');
+    await checkAvatarsClear(a);
   }
   for(const [energy,hammers,shields,guards] of [[0,0,0,0],[1,0,0,0],[2,0,0,0],[3,0,0,0],[4,0,0,0],[5,0,0,0],[5,3,0,0],[0,0,0,3],[0,0,1,0]]){
     await a.evaluate(({energy,hammers,shields,guards})=>{Object.assign(state.room.players.find(p=>p.id===self.id),{energy,hammers,shields,guards});ui.move=null;render();},{energy,hammers,shields,guards});
     for(const id of await a.locator('.move-card').evaluateAll(els=>els.map(el=>el.dataset.id))){
       await a.evaluate(id=>{ui.move=id;render();},id);
       await checkPlayViewport(a);
-      const overlaps=await a.evaluate(()=>{const c=document.querySelector('.arena-controls').getBoundingClientRect();return [...document.querySelectorAll('.seat[data-seat]')].filter(el=>{const r=el.getBoundingClientRect();return Math.min(r.right,c.right)>Math.max(r.left,c.left)&&Math.min(r.bottom,c.bottom)>Math.max(r.top,c.top);}).map(el=>el.dataset.seat);});
-      if(overlaps.length)await screenshot(a,'layout-failure-'+energy+'-'+id);
-      assert.deepEqual(overlaps,[],'Resources '+energy+'/'+hammers+'/'+shields+', selecting '+id+' keeps avatars clear');
+      await checkAvatarsClear(a);
     }
   }
 
@@ -284,7 +296,7 @@ try {
   await waitPhase(a,'selecting',3);
   assert.ok((await info(a)).room.players.every(p=>p.hp===1),'抵消后继续下一回合');
   assert.deepEqual(errors,[],'浏览器无 JavaScript 或资源错误');
-  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局','公开资源和雪崩禁招','亮招目标与金盾反弹信息'],screenshots:18,errors},null,2));
+  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','首页规则入口与数字强调','头像状态栏折叠展开且不误选目标','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局','公开资源和雪崩禁招','亮招目标与金盾反弹信息'],screenshots:18,errors},null,2));
 } finally {
   for(const page of pages) {
     try { await page.evaluate(async()=>{const token=sessionStorage.getItem('zaizai-token');if(token)await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}'});}); } catch {}

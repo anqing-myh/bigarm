@@ -118,6 +118,7 @@ location / {
 
 ```powershell
 npm.cmd test
+npm.cmd run test:selection
 ```
 
 真实浏览器测试使用 Playwright 和 Windows Edge：
@@ -127,6 +128,8 @@ npm.cmd ci
 # 另一终端启动 3100 端口的服务后
 npm.cmd run test:browser
 ```
+
+协作者提交或推送前，必须在仓库内运行 `npm.cmd test`、`npm.cmd run test:selection` 和 `npm.cmd run test:browser`，确认全部通过后再提交推送。浏览器回归脚本会启动三个独立浏览器，覆盖首页规则入口、房间流程、头像状态栏、目标选择、整局对战及桌面和移动端布局。
 
 可通过 BROWSER_PATH 指定 Chromium 路径，通过 TEST_BASE_URL 指定测试服务地址。截图保存在 test-results/。测试覆盖多浏览器同步、8 人上限、招式保密、目标、流星锤、死亡、2/5 秒、重连和重新开局。
 
