@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
+import { payCosts, resolveRound } from '../server/game.js';
 
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:3100';
 const browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true });
@@ -15,6 +16,59 @@ async function clickMove(page, move, target) {
   await page.locator('[data-act=submit-action]').click();
 }
 async function info(page) { return page.evaluate(async () => { const r = await fetch('/api/state', { headers: { Authorization: 'Bearer ' + sessionStorage.getItem('zaizai-token') } }); return r.json(); }); }
+async function checkTutorial(page){
+  const token=await page.evaluate(()=>sessionStorage.getItem('zaizai-token'));
+  const gameRequests=[];
+  const track=request=>{if(/\/api\/(?:rooms|game)\//.test(request.url()))gameRequests.push(request.url());};
+  page.on('request',track);
+  try{
+    for(const [i,[playerMove,robotMove]] of [['hammer','guard'],['gun','charge'],['gun','guard'],['hammer','charge']].entries()){
+      await page.setViewportSize(i%2?{width:1440,height:1050}:{width:360,height:800});
+      await page.locator('[data-act=tutorial-start]').click();
+      await page.locator('.tutorial-page h1').waitFor();
+      await page.evaluate(value=>{window.tutorialRandom=Math.random;Math.random=()=>value;},robotMove==='charge'?.1:.9);
+      await page.locator('[data-act=tutorial-move][data-id=charge]').click();
+      await page.evaluate(()=>{Math.random=window.tutorialRandom;delete window.tutorialRandom;});
+      assert.equal(await page.locator('.tutorial-action').count(),2,'上回合双方的仔正确显示且不泄露本回合选择');
+      assert.ok((await page.locator('.tutorial-action').allTextContents()).every(text=>text.includes('上回合')));
+      // A lobby state refresh must preserve the tutorial and the robot's committed choice.
+      await page.evaluate(async()=>acceptState(await api('/state')));
+      assert.equal(await page.evaluate(()=>tutorial.round),2);
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'手机教程无横向溢出');
+      await page.locator('[data-act=tutorial-move][data-id='+playerMove+']').click();
+      await page.locator('#modal[open]').waitFor();
+      const actual=await page.evaluate(()=>({player:tutorial.player,robot:tutorial.robot}));
+      const players=['player','robot'].map((id,seat)=>({id,name:id,seat,hp:1,energy:1,hammers:0,shields:0,guards:0}));
+      const actions={player:{move:playerMove,target:'robot'},robot:{move:robotMove}};
+      const expected=resolveRound(payCosts(players,actions),actions);
+      for(const id of ['player','robot']){
+        const p=expected.players.find(p=>p.id===id);
+        for(const key of ['hp','energy','hammers','guards'])assert.equal(actual[id][key],p[key],playerMove+'/'+robotMove+' '+id+' '+key);
+      }
+      if(playerMove==='hammer'&&robotMove==='guard'){
+        assert.match(await page.locator('#modal').textContent(),/没有扣血/);
+        assert.doesNotMatch(await page.locator('#modal').textContent(),/击败/);
+      }
+      await page.locator('#modal [data-act=close-modal]').click();
+      assert.equal(await page.locator('.tutorial-controls [data-act=tutorial-replay]').count(),1,'关闭弹窗后仍能重玩');
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'手机结算无横向溢出');
+      await page.locator('.tutorial-controls [data-act=tutorial-replay]').click();
+      assert.equal(await page.evaluate(()=>tutorial.round),1);
+      assert.equal(await page.evaluate(()=>tutorial.player.energy),0,'重玩清空资源');
+      await page.locator('.tutorial-heading [data-act=tutorial-exit]').click();
+      await page.getByRole('heading',{name:'游戏大厅'}).waitFor();
+    }
+    await page.locator('[data-act=tutorial-start]').click();
+    await page.reload();
+    await page.getByRole('heading',{name:'游戏大厅'}).waitFor();
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('zaizai-token')),token,'教程刷新不改变联机身份');
+    assert.equal((await info(page)).room,null,'教程不创建或加入真实房间');
+    assert.deepEqual(gameRequests,[],'教程不发送联机出招或房间操作');
+  }finally{
+    page.off('request',track);
+    await page.setViewportSize({width:1440,height:1050});
+  }
+}
 async function checkRing(page,count){
   const ring=await page.evaluate(()=>[...document.querySelectorAll('.seat[data-seat]')].map(el=>({seat:Number(el.dataset.seat),x:parseFloat(el.style.left),y:parseFloat(el.style.top),me:el.classList.contains('is-me')})).sort((a,b)=>a.seat-b.seat));
   assert.equal(ring.length,count);const me=ring.find(p=>p.me);assert.ok(me);
@@ -101,6 +155,7 @@ try {
     await page.getByRole('heading', { name: '游戏大厅' }).waitFor();
   }
   await screenshot(a, '03-lobby');
+  await checkTutorial(a);
   await a.locator('.page-heading [data-act=create]').click();
   await a.getByLabel('房间名称').fill('今晚见招拆招');
   await a.locator('#room-capacity').selectOption('3');

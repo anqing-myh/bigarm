@@ -13,6 +13,7 @@ let resourceNames = {energy:'仔',hammers:'锤',shields:'圣盾',guards:'防'};
 let token = sessionStorage.getItem('zaizai-token');
 let self = null;
 let state = {rooms:[],room:null};
+let tutorial = null;
 let events;
 let timeOffset = 0;
 let lastRound = '';
@@ -55,7 +56,7 @@ async function api(route, body) {
   const res = await fetch(`/api${route}`, {method:body===undefined?'GET':'POST', headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
   const data=await res.json();
   if (!res.ok) {
-    if(res.status===401) { token=null; sessionStorage.removeItem('zaizai-token'); events?.close(); self=null; render(); }
+    if(res.status===401) { token=null; sessionStorage.removeItem('zaizai-token'); events?.close(); self=null; tutorial=null; render(); }
     throw new Error(data.error || '连接失败，请重试。');
   }
   return data;
@@ -90,6 +91,7 @@ function acceptState(next) {
     lastRound=key;
   }
   state=next;self=next.self;timeOffset=next.serverTime-Date.now();
+  if(tutorial&&(!self||state.room)){tutorial=null;dialog.close();}
   if(document.activeElement?.matches('select')&&!canPatchSelection())deferredRender=true;
   else {deferredRender=false;render();}
   maybeJoinInvite();
@@ -218,7 +220,8 @@ function render() {
   }
   if(patchSelection())return;
   document.body.classList.toggle('in-room',!!self&&!!state.room);
-  app.innerHTML=!self?landing():state.room?arenaPage(state.room):lobby();
+  app.innerHTML=!self?landing():state.room?arenaPage(state.room):tutorial?tutorialPage():lobby();
+  attachTutorialCatalog();
   const key=selectionKey();
   renderedSelection=key?{key,ownAction:JSON.stringify(state.room.ownAction)}:null;
   for(const [id,value] of preserved){const el=document.getElementById(id);if(el)el.value=value;}
@@ -230,6 +233,60 @@ function render() {
   $('#user-button').innerHTML=self?`<span class="tiny-avatar">${avatar(0)}</span><span>${esc(self.name)}</span>`:'';
   document.title=state.room?`${state.room.name} · 仔仔竞技场`:'仔仔 · ZAIZAI ARENA';
   tick();
+}
+
+function attachTutorialCatalog(){
+  const sidebar=app.querySelector('.lobby-sidebar');
+  if(!sidebar)return;
+  const section=document.createElement('section');section.className='panel tutorial-catalog';
+  section.innerHTML=`<span class="eyebrow">BEGINNER COURSE</span><h2>新手教程</h2><button class="tutorial-level" data-act="tutorial-start"><span class="tutorial-level-number">01</span><span class="tutorial-level-copy"><strong>关卡1：基础</strong><small>学习仔、锤与枪的基础策略</small></span>${icon('chevron',16)}</button>`;
+  sidebar.prepend(section);
+}
+function startTutorial(){
+  if(!self||state.room||ui.busy)return;
+  tutorial={round:1,player:{hp:1,energy:0,hammers:0,guards:0},robot:{hp:1,energy:0,hammers:0,guards:0},playerMove:null,robotMove:null,result:null};
+  dialog.close();render();
+}
+function tutorialMove(id){
+  if(!tutorial||tutorial.result||state.room)return;
+  if(tutorial.round===1){
+    if(id!=='charge')return;
+    tutorial.player.energy=1;tutorial.robot.energy=1;
+    tutorial.round=2;tutorial.playerMove='charge';
+    // Commit the robot's hidden choice before the player picks a response.
+    tutorial.robotMove=Math.random()<.5?'charge':'guard';
+    render();return;
+  }
+  if(!['hammer','gun'].includes(id))return;
+  const {player,robot,robotMove}=tutorial;
+  if(robotMove==='charge')robot.energy++;
+  else robot.guards++;
+  let explanation;
+  if(id==='gun'){
+    player.energy--;
+    if(robotMove==='charge'){
+      robot.hp--;explanation='枪消耗 1 个仔，命中正在出仔的机器人，造成 1 点伤害，成功击败对手。';
+    }else explanation='枪消耗 1 个仔，但被机器人的防挡住，双方没有受到伤害。';
+  }else{
+    player.hammers++;
+    if(robotMove==='guard'){
+      robot.energy--;explanation='锤克制防，扣除机器人 1 个仔；它有仔，因此没有扣血。你同时获得 1 个锤。';
+    }else explanation='机器人出仔，获得 1 个仔；锤不会伤害出仔的玩家，你获得 1 个锤。';
+  }
+  tutorial.playerMove=id;
+  tutorial.result={title:robot.hp<=0?'击败机器人':id==='hammer'&&robotMove==='guard'?'成功扣除资源':'本次练习结束',explanation};
+  render();showTutorialResult();
+}
+function tutorialPage(){
+  const {round,player,robot,playerMove,robotMove,result}=tutorial;
+  const labels={charge:'✦ 仔',hammer:'⚒ 锤',gun:'↗ 枪',guard:'◇ 防'};
+  const stats=p=>`生命 ${p.hp} · 仔 ${p.energy} · 锤 ${p.hammers} · 防 ${p.guards}`;
+  const previous=round===2&&!result;
+  return `<section class="tutorial-page"><div class="tutorial-heading"><div><span class="eyebrow">BEGINNER COURSE · LEVEL 01</span><h1>关卡1：基础</h1></div><button class="text-button" data-act="tutorial-exit">${icon('exit',16)} 退出教程</button></div><div class="tutorial-board"><div class="tutorial-prompt"><span class="eyebrow">${round===2?'预判与应对':'积累资源'}</span><p>${round===2?'机器人将出仔或防。枪能打中出仔的玩家；锤能扣除防守者的仔，防守者无仔时才扣血。选择一招观察结算。':'双方均出仔，各获得 1 个仔，为后续招式积累资源。'}</p></div><div class="tutorial-arena"><div class="tutorial-player"><span class="tutorial-seat-label">你</span><span class="avatar-shell">${avatar(0)}</span><strong>${esc(self.name)}</strong><small>${stats(player)}</small>${playerMove?`<span class="tutorial-action ${playerMove}">${previous?'上回合 · ':''}${labels[playerMove]}</span>`:''}</div><div class="tutorial-arena-center"><span class="tutorial-vs">VS</span><span class="tutorial-round-label">第 ${round} 回合</span></div><div class="tutorial-player robot"><span class="tutorial-seat-label">机器人</span><span class="avatar-shell">${avatar(1,robot.hp<=0?'dead':'normal')}</span><strong>仔仔机器人</strong><small>${stats(robot)}</small>${round===2?`<span class="tutorial-action ${result?robotMove:'charge'}">${previous?'上回合 · '+labels.charge:labels[robotMove]}</span>`:''}</div></div><div class="tutorial-controls">${result?`<p class="tutorial-result-copy">${result.explanation}</p><div class="tutorial-result-actions"><button class="secondary-button" data-act="tutorial-replay">再来一次</button><button class="primary-button" data-act="tutorial-exit">退出新手教程</button></div>`:round===2?'<button class="move-card amber" data-act="tutorial-move" data-id="hammer"><span class="move-glyph">⚒</span><strong>锤</strong><span class="move-cost">预判机器人出防</span></button><button class="move-card red" data-act="tutorial-move" data-id="gun"><span class="move-glyph">↗</span><strong>枪</strong><span class="move-cost">消耗 1 仔 · 预判机器人出仔</span></button>':'<button class="move-card mint tutorial-charge" data-act="tutorial-move" data-id="charge"><span class="move-glyph">✦</span><strong>出仔，继续</strong><span class="move-cost">双方获得 1 个仔</span></button>'}</div></div></section>`;
+}
+function showTutorialResult(){
+  const {result,robotMove}=tutorial;
+  openModal(`${modalHeader('TRAINING MATCH',result.title)}<p class="modal-description">机器人出了${robotMove==='charge'?'仔':'防'}。${result.explanation}</p><div class="modal-actions"><button class="secondary-button" data-act="tutorial-replay">再来一次</button><button class="primary-button" data-act="tutorial-exit">退出新手教程</button></div>`);
 }
 
 function landing(){
@@ -380,6 +437,9 @@ document.addEventListener('click',async event=>{
   const el=event.target.closest('[data-act]');if(!el||el.disabled)return;
   const act=el.dataset.act,id=el.dataset.id;
   if(act==='close-modal')return dialog.close();
+  if(act==='tutorial-start'||act==='tutorial-replay')return startTutorial();
+  if(act==='tutorial-exit'){tutorial=null;dialog.close();render();return;}
+  if(act==='tutorial-move')return tutorialMove(id);
   if(act==='rules')return showRules();
   if(act==='show-history')return openModal(`${modalHeader('ROUND HISTORY','战况记录')}${logPanel(state.room)}`,'wide');
   if(act==='show-leaderboard')return openModal(`${modalHeader('ROOM RANKING','排行榜')}${leaderboardPanel(state.room)}`);
@@ -408,7 +468,7 @@ document.addEventListener('click',async event=>{
   if(act==='signout'){
     if(state.room)await command('/rooms/leave');
     if(state.room)return;
-    events?.close();token=null;self=null;sessionStorage.removeItem('zaizai-token');state={rooms:[],room:null};dialog.close();render();
+    events?.close();token=null;self=null;tutorial=null;sessionStorage.removeItem('zaizai-token');state={rooms:[],room:null};dialog.close();render();
   }
 });
 document.addEventListener('submit',async event=>{
