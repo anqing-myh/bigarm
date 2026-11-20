@@ -11,7 +11,7 @@ const INTERRUPT_MS = Number(process.env.INTERRUPT_MS) || 12000;
 const DISCONNECT_MS = Number(process.env.DISCONNECT_MS) || 60000;
 const sessions = new Map();
 const rooms = new Map();
-const allowedFiles = new Set(['index.html', 'app.js', 'styles.css', 'arena-layout.css']);
+const allowedFiles = new Set(['index.html', 'app.js', 'tutorial.js', 'styles.css', 'arena-layout.css']);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 const now = () => Date.now();
 const fail = message => { throw new Error(message); };
@@ -340,6 +340,11 @@ export function createServer() {
         return json(res, 200, { ok: true });
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'Method not allowed' });
+      if (url.pathname === '/tutorial-game.js') {
+        const content = await readFile(new URL('./game.js', import.meta.url));
+        res.writeHead(200, { 'Content-Type': mime['.js'], 'Cache-Control': 'no-cache' });
+        return res.end(req.method === 'HEAD' ? undefined : content);
+      }
       const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
       if (!allowedFiles.has(file)) return json(res, 404, { error: '页面不存在。' });
       const content = await readFile(path.join(publicDir, file));

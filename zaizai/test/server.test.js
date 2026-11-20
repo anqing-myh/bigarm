@@ -195,7 +195,7 @@ test('polling clients cancel equal attacks, continue rounds and resolve shieldHa
   const combined=(await request('/state?poll=1',a)).room;
   const caster=combined.players.find(p=>p.id===joined.self.id);
   assert.equal(combined.phase,'reveal');
-  assert.equal(caster.shields,0);assert.equal(caster.hammers,0);assert.equal(caster.guards,0);
+  assert.equal(caster.shields,0);assert.equal(caster.hammers,1);assert.equal(caster.guards,0);
   assert.equal(caster.hp,0,'锤带盾在无仔时被普通锤扣血');
   assert.equal(combined.result.winnerId,secret.self.id);
 

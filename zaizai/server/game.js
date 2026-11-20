@@ -2,7 +2,7 @@ export const MOVES = Object.freeze({
   charge: { name: '仔', icon: '✦', cost: {}, description: '积蓄力量，获得 1 个仔。', color: 'mint' },
   guard: { name: '防', icon: '◇', cost: {}, description: '抵挡本回合的枪与火球，并获得 1 个防。', color: 'blue' },
   hammer: { name: '锤', icon: '⚒', cost: {}, target: true, description: '获得 1 个锤；敲击使用防或锤带盾的目标：有仔扣 1 仔，无仔扣 1 生命。抵挡地震与海浪。', color: 'amber' },
-  shieldHammer: { name: '锤带盾', icon: '⚒', cost: { shields: 1 }, target: true, description: '抵挡枪、火球、地震和海浪；锤击使用防或锤带盾的目标：有仔扣 1 仔，无仔扣 1 生命。自己也会被锤击，不增加锤或防次数。', color: 'amber' },
+  shieldHammer: { name: '锤带盾', icon: '⚒', cost: { shields: 1 }, target: true, description: '消耗 1 圣盾并视为使用过 1 次锤，不增加防；抵挡枪、火球、地震和海浪。锤击防或锤带盾目标：有仔扣 1 仔，无仔扣 1 生命。自己也会被锤击。', color: 'amber' },
   gun: { name: '枪', icon: '↗', cost: { energy: 1 }, target: true, attack: 1, description: '对一名目标造成 1 点伤害，攻击点数 1。', color: 'red' },
   fireball: { name: '火球', icon: '☄', cost: { energy: 2 }, target: true, attack: 1, description: '对目标及其左右存活邻居各造成 1 点伤害，不伤及自己。提交招式时两人存活则攻击点数为 2，否则为 1；本回合不再变化。', color: 'orange' },
   angel: { name: '天使', icon: '♡', cost: { energy: 3 }, description: '恢复 1 点生命，没有生命上限；本回合受到的总伤害至多 1 点。', color: 'pink' },
@@ -98,6 +98,7 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
     if (action.move === 'charge') { p.energy++; change.energy++; log('gain', `${p.name} 获得 1 个仔。`); }
     if (action.move === 'guard') { p.guards++; change.guards++; }
     if (action.move === 'hammer') { p.hammers++; change.hammers++; }
+    if (action.move === 'shieldHammer') { p.hammers++; change.hammers++; }
     if (action.move === 'holy') { p.shields++; change.shields++; }
     if (action.move === 'angel' || action.move === 'darkAngel') { change.healing++; log('heal', `${p.name} 恢复 1 点生命。`, { target: p.id }); }
   }

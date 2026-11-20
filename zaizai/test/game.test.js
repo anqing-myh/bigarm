@@ -219,7 +219,7 @@ test('超时自动行动始终遵守雪崩限制，仔被禁时改用防', () =>
 });
 
 
-test('锤带盾消耗一个圣盾，需要有效目标；不积累锤或防', () => {
+test('锤带盾消耗一个圣盾，需要有效目标；积累锤但不积累防', () => {
   const players=[p('a',{shields:1,hammers:2,guards:2}),p('b',{energy:1})];
   assert.throws(()=>validateAction([p('a',{shields:0}),p('b')],'a',act('shieldHammer','b')),/圣盾不足/);
   for(const target of [undefined,'a','missing']){
@@ -230,8 +230,8 @@ test('锤带盾消耗一个圣盾，需要有效目标；不积累锤或防', ()
   assert.deepEqual(action,{move:'shieldHammer',target:'b'});
   const r=battle(players,{a:action,b:act('guard')});
   assert.equal(get(r,'a').shields,0);
-  assert.equal(get(r,'a').hammers,2);assert.equal(get(r,'a').guards,2);
-  assert.equal(r.changes.a.hammers,0);assert.equal(r.changes.a.guards,0);
+  assert.equal(get(r,'a').hammers,3);assert.equal(get(r,'a').guards,2);
+  assert.equal(r.changes.a.hammers,1);assert.equal(r.changes.a.guards,0);
   assert.equal(get(r,'b').energy,0);assert.equal(get(r,'b').hp,1);
   assert.ok(r.logs.some(l=>l.type==='drain'&&l.text.includes('锤带盾')));
 });
@@ -279,6 +279,7 @@ test('流星锤封锁锤带盾时消耗照扣，锤击与两类防御均失效',
   assert.equal(get(r,'a').hp,3);
   assert.equal(get(r,'b').energy,10,'封锁后不再锤击对方');
   assert.equal(get(r,'a').hammers,3);assert.equal(get(r,'a').guards,0);
+  assert.equal(r.changes.a.hammers,0);assert.equal(r.changes.a.guards,0);
   const gun=battle([p('a',{hp:5}),p('b'),p('c')],{
     a:act('shieldHammer','b'),b:act('gun','a'),c:act('meteor'),
   },{c:'a'});

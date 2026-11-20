@@ -18,7 +18,11 @@ $exitCode = 0
 function Test-PreviewReady {
     try {
         $response = Invoke-WebRequest -Uri "$localUrl/app.js" -UseBasicParsing -TimeoutSec 2
-        return $response.StatusCode -eq 200 -and $response.Content -ceq $script:expectedApp
+        $tutorial = Invoke-WebRequest -Uri "$localUrl/tutorial.js" -UseBasicParsing -TimeoutSec 2
+        $engine = Invoke-WebRequest -Uri "$localUrl/tutorial-game.js" -UseBasicParsing -TimeoutSec 2
+        return $response.StatusCode -eq 200 -and $response.Content -ceq $script:expectedApp -and
+            $tutorial.StatusCode -eq 200 -and $tutorial.Content -ceq $script:expectedTutorial -and
+            $engine.StatusCode -eq 200 -and $engine.Content -ceq $script:expectedEngine
     } catch {
         return $false
     }
@@ -55,6 +59,8 @@ try {
     $runDirectory = Join-Path $PSScriptRoot ('.preview/' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($runDirectory)
     $script:expectedApp = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'public/app.js'), $utf8)
+    $script:expectedTutorial = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'public/tutorial.js'), $utf8)
+    $script:expectedEngine = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'server/game.js'), $utf8)
 
     if (Test-PreviewReady) {
         Write-Host "Reusing the existing ZAIZAI server at $localUrl (it will stay running)."

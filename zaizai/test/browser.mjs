@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { payCosts, resolveRound } from '../server/game.js';
+import { MOVES, validateAction, payCosts, resolveRound } from '../server/game.js';
 
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:3100';
 const browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true });
@@ -17,58 +17,94 @@ async function clickMove(page, move, target) {
 }
 async function info(page) { return page.evaluate(async () => { const r = await fetch('/api/state', { headers: { Authorization: 'Bearer ' + sessionStorage.getItem('zaizai-token') } }); return r.json(); }); }
 async function checkTutorial(page){
-  const token=await page.evaluate(()=>sessionStorage.getItem('zaizai-token'));
-  const gameRequests=[];
-  const track=request=>{if(/\/api\/(?:rooms|game)\//.test(request.url()))gameRequests.push(request.url());};
+  const requests=[];
+  const track=request=>{if(/\/api\/(?:rooms|game)\//.test(request.url()))requests.push(request.url());};
   page.on('request',track);
   try{
-    for(const [i,[playerMove,robotMove]] of [['hammer','guard'],['gun','charge'],['gun','guard'],['hammer','charge']].entries()){
-      await page.setViewportSize(i%2?{width:1440,height:1050}:{width:360,height:800});
-      await page.locator('[data-act=tutorial-start]').click();
-      await page.locator('.tutorial-page h1').waitFor();
-      await page.evaluate(value=>{window.tutorialRandom=Math.random;Math.random=()=>value;},robotMove==='charge'?.1:.9);
-      await page.locator('[data-act=tutorial-move][data-id=charge]').click();
-      await page.evaluate(()=>{Math.random=window.tutorialRandom;delete window.tutorialRandom;});
-      assert.equal(await page.locator('.tutorial-action').count(),2,'上回合双方的仔正确显示且不泄露本回合选择');
-      assert.ok((await page.locator('.tutorial-action').allTextContents()).every(text=>text.includes('上回合')));
-      // A lobby state refresh must preserve the tutorial and the robot's committed choice.
-      await page.evaluate(async()=>acceptState(await api('/state')));
-      assert.equal(await page.evaluate(()=>tutorial.round),2);
-      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'手机教程无横向溢出');
-      await page.locator('[data-act=tutorial-move][data-id='+playerMove+']').click();
-      await page.locator('#modal[open]').waitFor();
-      const actual=await page.evaluate(()=>({player:tutorial.player,robot:tutorial.robot}));
-      const players=['player','robot'].map((id,seat)=>({id,name:id,seat,hp:1,energy:1,hammers:0,shields:0,guards:0}));
-      const actions={player:{move:playerMove,target:'robot'},robot:{move:robotMove}};
-      const expected=resolveRound(payCosts(players,actions),actions);
-      for(const id of ['player','robot']){
-        const p=expected.players.find(p=>p.id===id);
-        for(const key of ['hp','energy','hammers','guards'])assert.equal(actual[id][key],p[key],playerMove+'/'+robotMove+' '+id+' '+key);
-      }
-      if(playerMove==='hammer'&&robotMove==='guard'){
-        assert.match(await page.locator('#modal').textContent(),/没有扣血/);
-        assert.doesNotMatch(await page.locator('#modal').textContent(),/击败/);
-      }
-      await page.locator('#modal [data-act=close-modal]').click();
-      assert.equal(await page.locator('.tutorial-controls [data-act=tutorial-replay]').count(),1,'关闭弹窗后仍能重玩');
-      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'手机结算无横向溢出');
-      await page.locator('.tutorial-controls [data-act=tutorial-replay]').click();
-      assert.equal(await page.evaluate(()=>tutorial.round),1);
-      assert.equal(await page.evaluate(()=>tutorial.player.energy),0,'重玩清空资源');
-      await page.locator('.tutorial-heading [data-act=tutorial-exit]').click();
-      await page.getByRole('heading',{name:'游戏大厅'}).waitFor();
-    }
+    await page.evaluate(()=>localStorage.removeItem('zaizai-tutorial-v2'));
+    await page.setViewportSize({width:360,height:800});
     await page.locator('[data-act=tutorial-start]').click();
-    await page.reload();
-    await page.getByRole('heading',{name:'游戏大厅'}).waitFor();
-    assert.equal(await page.evaluate(()=>sessionStorage.getItem('zaizai-token')),token,'教程刷新不改变联机身份');
-    assert.equal((await info(page)).room,null,'教程不创建或加入真实房间');
-    assert.deepEqual(gameRequests,[],'教程不发送联机出招或房间操作');
-  }finally{
-    page.off('request',track);
-    await page.setViewportSize({width:1440,height:1050});
-  }
+    const expected=[['charge','hammer','gun'],['fireball','quake'],['holy','gold','shieldHammer'],['angel','darkAngel'],['meteor','wave','avalanche']];
+    const basicHints=['开局的第一回合，先出仔积蓄力量','对方可能会使用防来抵挡你的枪，试试出锤来攻击！','你已经用锤锤掉了对方的一个仔，现在对方没有仔了，试试用枪攻击他！'];
+    let previous;
+    for(let level=0;level<expected.length;level++){
+      for(let step=0;step<expected[level].length;step++){
+        const move=expected[level][step];
+        const before=await page.evaluate(()=>({player:{...tutorial.player},robot:{...tutorial.robot},robot2:tutorial.robot2?{...tutorial.robot2}:null,move:tutorial.move,robotMove:tutorial.robotMove,robot2Move:tutorial.robot2Move}));
+        assert.equal(before.move,move);
+        assert.equal(before.player.hp,1,'练习开始时玩家生命为 1');
+        if(level===0){
+          if(step>0)assert.deepEqual([before.player,before.robot],previous,'基础关连续保留结算状态');
+          assert.equal(await page.locator('.tutorial-action').count(),0,'亮招前隐藏机器人招式');
+          assert.equal((await page.locator('.tutorial-prompt p').first().textContent()),basicHints[step]);
+          assert.equal(before.robotMove,['charge','guard','charge'][step]);
+          if(step===2)assert.equal(before.robot.energy,0,'锤消耗对手的仔');
+        }
+        assert.match(await page.locator('.tutorial-prompt').textContent(),new RegExp(courseName(move)));
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'手机教程无横向溢出');
+        if(level===0&&step===1){
+          await page.locator('[data-act=tutorial-exit]').click();
+          await page.locator('[data-act=tutorial-start]').click();
+          assert.equal(await page.evaluate(()=>tutorial.progress.step),1,'退出后恢复当前题');
+          assert.deepEqual(await page.evaluate(()=>({...tutorial.player})),before.player);
+        }
+        if(move==='gold')assert.match(await page.locator('.tutorial-prompt').textContent(),/预选反弹：枪/);
+        if(move==='avalanche'){
+          const prompt=await page.locator('.tutorial-prompt p').first().textContent();
+          assert.match(prompt,/禁用当回合所出的招式/);
+          assert.equal((prompt.match(/机器人出「仔」/g)||[]).length,1);
+          assert.doesNotMatch(prompt,/机器人禁用仔/);
+        }
+        await page.locator('[data-act=tutorial-move]').click();
+        if(move==='meteor'){
+          assert.equal(await page.locator('[data-act=tutorial-interrupt]').count(),2);
+          await page.locator('[data-act=tutorial-interrupt][data-id=robot]').click();
+        }
+        await page.locator('[data-act=tutorial-next]').waitFor();
+        assert.doesNotMatch(await page.locator('.tutorial-prompt').textContent(),/请使用|选择「/,'结算后不再提示选择招式');
+        assert.ok((await page.locator('.tutorial-result-copy').first().textContent()).includes(MOVES[move].description),'结算展示玩法手册完整效果');
+        if(level===0&&move==='hammer'){
+          assert.ok((await page.locator('.tutorial-result-copy').first().textContent()).includes(MOVES.guard.description),'锤的结算同时教学防的完整效果');
+          assert.equal(await page.locator('.tutorial-result-copy').first().locator('br').count(),1,'锤和防分行显示');
+        }
+        const players=[before.player,before.robot,...(before.robot2?[before.robot2]:[])];
+        const actions={player:validateAction(players,'player',{move,target:'robot',reflect:'gun'}),robot:validateAction(players,'robot',{move:before.robotMove,target:'player'})};
+        if(before.robot2)actions.robot2=validateAction(players,'robot2',{move:before.robot2Move});
+        const result=resolveRound(payCosts(players,actions),actions,move==='meteor'?{player:'robot'}:{});
+        assert.deepEqual(await page.evaluate(()=>[tutorial.player,tutorial.robot,...(tutorial.robot2?[tutorial.robot2]:[])]),result.players,'结算与服务端一致');
+        if(level===0&&move==='gun')assert.equal(result.changes.robot.damage,1,'枪击中机器人');
+        const seats=page.locator('.tutorial-player');
+        for(let i=0;i<players.length;i++){
+          const delta=result.changes[players[i].id]||{}, seat=seats.nth(i);
+          assert.equal(await seat.locator('.damage-float').count(),delta.damage?1:0,'伤害浮字对应结算');
+          assert.equal(await seat.locator('.heal-float').count(),delta.healing?1:0,'治疗浮字对应结算');
+          assert.equal(await seat.evaluate(el=>el.classList.contains('is-muted')),result.muted.includes(players[i].id),'封锁标识对应结算');
+          assert.equal(await seat.evaluate(el=>el.classList.contains('is-dead')),result.players[i].hp<=0,'阵亡状态对应结算');
+        }
+        assert.equal(await page.locator('.tutorial-arena.arena-damage').count(),result.hasDamage?1:0,'受伤播放场地动画');
+        if(before.robot2){
+          assert.equal(await page.locator('.tutorial-opponents .tutorial-player').count(),2,'范围攻击展示两名机器人');
+          assert.ok(result.players.slice(1).every(p=>p.hp<=0),'范围攻击击败两名机器人');
+          if(move==='wave'){
+            assert.equal(result.changes.robot.damage,2,'海浪与反弹火球各造成 1 点伤害');
+            assert.equal(result.changes.robot2.damage,1);
+            assert.match(await page.locator('.tutorial-result-copy').first().textContent(),/反弹火球.*额外.*1 点火球伤害/);
+          }
+        }
+        if(move==='avalanche'){assert.equal(before.robotMove,'charge');assert.equal(result.players[0].hp,before.player.hp);assert.equal(result.avalanche.bans.robot,'charge');}
+        previous=result.players;
+        if(step===expected[level].length-1)assert.match(await page.locator('.tutorial-result-copy').last().textContent(),/完成本关/);
+        await page.locator('[data-act=tutorial-next]').click();
+      }
+    }
+    assert.equal(await page.locator('.tutorial-page').count(),0,'完成后返回原界面');
+    await page.locator('[data-act=tutorial-start]').click();
+    assert.deepEqual(await page.evaluate(()=>[tutorial.progress.level,tutorial.progress.step]),[0,0],'完成后重新进入从头学习');
+    await page.locator('[data-act=tutorial-exit]').click();
+    assert.deepEqual(requests,[],'教程不发送房间或联机出招请求');
+  }finally{page.off('request',track);await page.setViewportSize({width:1440,height:1050});}
 }
+function courseName(move){return {charge:'仔',gun:'枪',hammer:'锤',guard:'防',fireball:'火球',quake:'地震',holy:'圣盾',gold:'金盾',shieldHammer:'锤带盾',angel:'天使',darkAngel:'黑天使',meteor:'流星锤',wave:'海浪',avalanche:'雪崩'}[move];}
 async function checkRing(page,count){
   const ring=await page.evaluate(()=>[...document.querySelectorAll('.seat[data-seat]')].map(el=>({seat:Number(el.dataset.seat),x:parseFloat(el.style.left),y:parseFloat(el.style.top),me:el.classList.contains('is-me')})).sort((a,b)=>a.seat-b.seat));
   assert.equal(ring.length,count);const me=ring.find(p=>p.me);assert.ok(me);
@@ -138,6 +174,15 @@ try {
   const [a, b, c] = pages;
   await a.goto(base);
   await a.getByRole('heading', { name: /蓄一手/ }).waitFor();
+  await a.locator('.welcome [data-act=tutorial-start]').click();
+  await a.locator('.tutorial-page h1').waitFor();
+  assert.equal(await a.evaluate(()=>self),null,'未登录可进入教程');
+  await a.locator('[data-act=tutorial-move][data-id=charge]').click();
+  await a.locator('[data-act=tutorial-next]').click();
+  await a.locator('[data-act=tutorial-exit]').click();
+  await a.locator('.welcome [data-act=tutorial-start]').click();
+  assert.equal(await a.evaluate(()=>tutorial.progress.step),1,'未登录退出后保留进度');
+  await a.locator('[data-act=tutorial-exit]').click();
   await a.locator('.welcome [data-act=rules]').click();
   await a.locator('#modal .rule-move').last().waitFor();
   assert.equal(await a.locator('#modal .rule-move').count(),14,'未登录也能查看全部 14 个招式');
