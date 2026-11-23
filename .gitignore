@@ -32,6 +32,10 @@ playwright-report/
 /zaizai/.preview/
 /zaizai/cloudflared.exe
 
+# BIGARM local preview runtime
+/bigarm/.preview/
+/bigarm/cloudflared.exe
+
 # Operating system artifacts
 .DS_Store
 Thumbs.db

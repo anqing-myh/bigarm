@@ -5,7 +5,7 @@ Bigarm 是一个包含多款网页游戏的协作仓库。
 ## 游戏
 
 - [仔仔（Zaizai Arena）](zaizai/README.md)：支持 2–8 人联机的回合制策略游戏，玩家使用临时昵称创建或加入房间，并通过选择招式进行对局。玩法、运行和部署说明见仔仔的 [README](zaizai/README.md)。
-- `bigarm/`：大臂游戏素材目录，游戏尚未实现。
+- [大臂（Bigarm Arena）](bigarm/README.md)：支持 2–10 人的网页回合竞技；包含独立于网页和房间服务的规则引擎，支持中途选盾、祝福减伤与续结。
 
 ## 协作者须知
 
@@ -28,3 +28,5 @@ npm.cmd run test:browser
 ```
 
 浏览器回归测试需要可用的 Playwright/Edge 环境及运行中的游戏服务。完整测试说明和启动方式见 [仔仔 README](zaizai/README.md)。
+
+大臂相关改动在 `bigarm/` 目录运行 `npm.cmd test`；界面或联机流程改动还须运行 `npm.cmd run test:browser`。大臂浏览器测试会自行启动临时服务，不使用仔仔的端口；依赖安装及引擎调用方式见[大臂 README](bigarm/README.md)。

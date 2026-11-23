@@ -1,0 +1,8 @@
+**
+!package.json
+!rules/
+!rules/**
+!server/
+!server/**
+!public/
+!public/**
