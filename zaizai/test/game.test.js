@@ -40,6 +40,7 @@ test('防抵挡枪和火球', () => {
 test('锤敲防：有仔扣仔，无仔扣血；多锤按站位消耗后造成伤害', () => {
   const r=battle([p('a',{energy:1}),p('b'),p('c')],{a:act('guard'),b:act('hammer','a'),c:act('hammer','a')});
   assert.equal(get(r,'a').energy,0);assert.equal(get(r,'a').hp,0);assert.equal(r.hasDamage,true);
+  assert.deepEqual(r.logs.find(l=>l.type==='drain'),{type:'drain',text:'B 的锤敲掉了 A 的 1 个仔。',source:'b',target:'a'});
 });
 test('火球溅射目标和存活邻居，跳过死者，不自伤，不重复伤害', () => {
   const r=battle([p('a'),p('b',{hp:0}),p('c'),p('d'),p('e')],{a:act('fireball','c'),c:act('charge'),d:act('charge'),e:act('charge')});
@@ -48,10 +49,12 @@ test('火球溅射目标和存活邻居，跳过死者，不自伤，不重复�
 test('两人火球为 2 点数，压制对射的枪', () => {
   const r=battle([p('a'),p('b')],{a:act('gun','b'),b:act('fireball','a')});
   assert.equal(get(r,'a').hp,0);assert.equal(get(r,'b').hp,1);assert.equal(r.winnerId,'b');
+  assert.equal(r.logs.find(l=>l.type==='clash').outcome,'suppressed');
 });
 test('三人火球为 1 点数，与枪互攻抵消', () => {
   const r=battle([p('a'),p('b'),p('c')],{a:act('gun','b'),b:act('fireball','a'),c:act('guard')});
   assert.equal(get(r,'a').hp,1);assert.equal(get(r,'b').hp,1);assert.equal(get(r,'c').hp,1);assert.equal(r.hasDamage,false);
+  assert.ok(r.logs.filter(l=>l.type==='clash').every(l=>l.outcome==='cancel'));
 });
 test('天使没有生命上限；治疗与伤害同时结算', () => {
   const r=battle([p('a'),p('b')],{a:act('angel'),b:act('gun','a')});

@@ -11,7 +11,7 @@ const INTERRUPT_MS = Number(process.env.INTERRUPT_MS) || 12000;
 const DISCONNECT_MS = Number(process.env.DISCONNECT_MS) || 60000;
 const sessions = new Map();
 const rooms = new Map();
-const allowedFiles = new Set(['index.html', 'app.js', 'tutorial.js', 'styles.css', 'arena-layout.css']);
+const allowedFiles = new Set(['index.html', 'app.js', 'arena-fx.js', 'tutorial.js', 'styles.css', 'arena-layout.css']);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 const now = () => Date.now();
 const fail = message => { throw new Error(message); };

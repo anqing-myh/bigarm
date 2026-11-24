@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test test/game.test.js test/server.test.js test/results.test.js",
+    "test": "node --test test/game.test.js test/server.test.js test/results.test.js test/arena-fx.test.js",
     "test:browser": "node test/browser.mjs",
     "test:selection": "node test/selection-sync.mjs"
   },

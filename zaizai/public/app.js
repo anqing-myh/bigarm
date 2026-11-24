@@ -233,6 +233,7 @@ function render() {
   $('#user-button').innerHTML=self?`<span class="tiny-avatar">${avatar(0)}</span><span>${esc(self.name)}</span>`:'';
   document.title=state.room?`${state.room.name} · 仔仔竞技场`:'仔仔 · ZAIZAI ARENA';
   tick();
+  window.ZaizaiFX?.sync({room:state.room,self,previewMove:ui.move,previewTarget:ui.target,interruptTarget:ui.interruptTarget});
 }
 
 function attachTutorialCatalog(){
@@ -339,6 +340,7 @@ function renderActionTable(room){
     const angle=Math.PI/2-(i-selfIndex)/slots*Math.PI*2;
     const x=50+Math.cos(angle)*orbitX,y=50+Math.sin(angle)*orbitY;
     const muted=room.result?.muted?.includes(p.id);
+    const frozen=room.phase==='reveal'&&!!room.result?.avalanche;
     const description=revealedMove(room,action);
     const status=[action.automatic?'自动':'',muted?'封锁':''].filter(Boolean).join(' · ');
     const textLength=[...description].length;
@@ -347,7 +349,7 @@ function renderActionTable(room){
     const lineCapacity=Math.max(2,Math.floor((actionWidth-12)/(font*.9)));
     const textLines=expanded?Math.max(1,Math.ceil(textLength/lineCapacity)):1;
     const actionHeight=height+(expanded?4+Math.max(0,textLines-1)*Math.ceil(font*1.05):0);
-    return `<span class="table-action ${moves[action.move]?.color||''} ${muted?'muted':''} ${expanded?'expanded':''}" data-player-id="${p.id}" title="${p.seat+1}号 · ${esc(description)}${status?' · '+status:''}" aria-label="${p.seat+1}号：${esc(description)}${status?' · '+status:''}" style="left:${x}%;top:${y}%;--table-action-width:${actionWidth}px;--table-action-height:${actionHeight}px;--table-action-font:${font}px;--table-action-lines:${textLines}"><span class="table-action-seat">${p.seat+1}号${status?` · ${esc(status)}`:''}</span><span class="table-action-icon">${esc(moves[action.move]?.icon||'')}</span><span class="table-action-move">${esc(description)}</span></span>`;
+    return `<span class="table-action ${moves[action.move]?.color||''} ${muted?'muted':''} ${expanded?'expanded':''} ${frozen?'is-frozen':''}" data-player-id="${p.id}" title="${p.seat+1}号 · ${esc(description)}${status?' · '+status:''}" aria-label="${p.seat+1}号：${esc(description)}${status?' · '+status:''}" style="left:${x}%;top:${y}%;--table-action-width:${actionWidth}px;--table-action-height:${actionHeight}px;--table-action-font:${font}px;--table-action-lines:${textLines}"><span class="table-action-seat">${p.seat+1}号${status?` · ${esc(status)}`:''}</span><span class="table-action-icon">${esc(moves[action.move]?.icon||'')}</span><span class="table-action-move">${esc(description)}</span></span>`;
   }).join('');
   return `<div class="action-table" aria-label="本回合已公开招式">${actions}</div>`;
 }
@@ -369,7 +371,7 @@ function renderSeats(room,inGame){
     let bubble='';
     if(!inGame)bubble=`<span class="action-bubble readiness-bubble ${p.ready?'ready-bubble':'not-ready-bubble'}" data-ready="${p.ready}">${icon(p.ready?'check':'clock',11)} ${p.ready?'已准备':'未准备'}</span>`;
     else if(room.phase==='selecting'&&room.submitted.includes(p.id))bubble=`<span class="action-bubble locked">${icon('lock',11)} 已锁定</span>`;
-    return `<button class="seat ${isMe?'is-me':''} ${dead?'is-dead':''} ${canTarget?'targetable':''} ${selected?'target-selected':''} ${muted?'is-muted':''}" style="left:${x}%;top:${y}%;--player-color:${PALETTE[p.seat%8]}" data-act="target" data-id="${p.id}" data-seat="${p.seat+1}" data-can-target="${canTarget?1:0}" aria-label="${p.seat+1}号 ${esc(p.name)}${isMe?'，你':''}${dead?'，已阵亡':inGame?'，生命 '+p.hp:p.ready?'，已准备':'，未准备'}">${bubble}<span class="avatar-shell">${avatar(p.seat,dead?'dead':'normal')}${room.hostId===p.id?'<span class="host-badge" title="房主">'+icon('crown',12)+'</span>':''}${!p.connected?'<span class="disconnected-badge" title="连接中">!</span>':''}${selected&&canTarget?'<span class="target-check">'+icon('check',12)+'</span>':''}</span><span class="seat-name"><span class="seat-number">${p.seat+1}号</span> ${esc(p.name)} ${isMe?'<b>你</b>':''}</span><span class="seat-detail" data-act="toggle-status" data-id="${p.id}" title="展开 / 收起状态栏">${playerStatus(p,!!ui.statusOpen[p.id])}</span>${delta?.damage?'<span class="damage-float">−'+delta.damage+' ♥</span>':delta?.healing?'<span class="heal-float">+'+delta.healing+' ♥</span>':''}</button>`;
+    return `<button class="seat ${isMe?'is-me':''} ${dead?'is-dead':''} ${canTarget?'targetable':''} ${selected?'target-selected':''} ${muted?'is-muted':''}" style="left:${x}%;top:${y}%;--player-color:${PALETTE[p.seat%8]}" data-act="target" data-id="${p.id}" data-seat="${p.seat+1}" data-can-target="${canTarget?1:0}" aria-label="${p.seat+1}号 ${esc(p.name)}${isMe?'，你':''}${dead?'，已阵亡':inGame?'，生命 '+p.hp:p.ready?'，已准备':'，未准备'}">${bubble}<span class="avatar-shell">${avatar(p.seat,dead?'dead':'normal')}${room.hostId===p.id?'<span class="host-badge" title="房主">'+icon('crown',12)+'</span>':''}${!p.connected?'<span class="disconnected-badge" title="连接中">!</span>':''}${selected&&canTarget?'<span class="target-check">'+icon('check',12)+'</span>':''}</span><span class="seat-name"><span class="seat-number">${p.seat+1}号</span> ${esc(p.name)} ${isMe?'<b>你</b>':''}</span><span class="seat-detail" data-act="toggle-status" data-id="${p.id}" title="展开 / 收起状态栏">${playerStatus(p,!!ui.statusOpen[p.id])}</span>${delta?.damage?'<span class="damage-float">−'+delta.damage+' ♥</span>':''}${delta?.healing?'<span class="heal-float">+'+delta.healing+' ♥</span>':''}</button>`;
   }).join('')+(['interrupt','reveal'].includes(room.phase)?renderActionTable(room):'');
 }
 function meAlive(room){return room.players.some(p=>p.id===self.id&&p.hp>0);}

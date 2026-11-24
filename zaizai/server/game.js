@@ -113,7 +113,7 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
       case 'hammer': case 'shieldHammer': {
         const target = byId.get(action.target);
         if (['guard', 'shieldHammer'].includes(activeAction(target?.id)?.move)) {
-          if (target.energy > 0) { target.energy--; changes[target.id].energy--; log('drain', `${p.name} 的${MOVES[action.move].name}敲掉了 ${target.name} 的 1 个仔。`); }
+          if (target.energy > 0) { target.energy--; changes[target.id].energy--; log('drain', `${p.name} 的${MOVES[action.move].name}敲掉了 ${target.name} 的 1 个仔。`, { source: p.id, target: target.id }); }
           else addHit(target.id, 1, true);
         }
         break;
@@ -153,7 +153,7 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
       const text = counter.power === hit.power
         ? name(hit.source) + ' 的' + MOVES[hit.move].name + '与 ' + name(hit.target) + ' 的' + MOVES[counter.move].name + '点数相同，彼此抵消。'
         : name(hit.source) + ' 的' + MOVES[hit.move].name + '被 ' + name(hit.target) + ' 更高点数的攻击压制。';
-      log('clash', text, { source: hit.source, target: hit.target });
+      log('clash', text, { source: hit.source, target: hit.target, outcome: counter.power === hit.power ? 'cancel' : 'suppressed' });
     }
   }
   const blocked = (hit, action) => {
@@ -166,20 +166,20 @@ export function resolveRound(paidPlayers, actions, interrupts = {}) {
   const deal = (hit, reflected = false) => {
     const defense = activeAction(hit.target);
     if (blocked(hit, defense)) {
-      log('block', `${name(hit.target)} 挡住了 ${name(hit.source)} 的${MOVES[hit.move].name}。`, { source: hit.source, target: hit.target });
+      log('block', `${name(hit.target)} 挡住了 ${name(hit.source)} 的${MOVES[hit.move].name}。`, { source: hit.source, target: hit.target, move: hit.move, reflected });
       return;
     }
     if (!reflected && reflects(hit)) {
-      log('reflect', `${name(hit.target)} 将${MOVES[hit.move].name}反弹给了 ${name(hit.source)}！`, { source: hit.target, target: hit.source });
+      log('reflect', `${name(hit.target)} 将${MOVES[hit.move].name}反弹给了 ${name(hit.source)}！`, { source: hit.target, target: hit.source, move: hit.move });
       deal({ ...hit, source: hit.target, target: hit.source }, true);
       return;
     }
     const protectedByAngel = ['angel', 'darkAngel'].includes(defense?.move);
     const amount = protectedByAngel ? Math.min(hit.amount, Math.max(0, 1 - changes[hit.target].damage)) : hit.amount;
-    if (amount < hit.amount) log('block', name(hit.target) + ' 的' + MOVES[defense.move].name + '将本回合总伤害限制为 1 点。', { source: hit.source, target: hit.target });
+    if (amount < hit.amount) log('block', name(hit.target) + ' 的' + MOVES[defense.move].name + '将本回合总伤害限制为 1 点。', { source: hit.source, target: hit.target, move: hit.move, reflected });
     if (amount === 0) return;
     changes[hit.target].damage += amount;
-    log('damage', name(hit.source) + ' 的' + MOVES[hit.move].name + '对 ' + name(hit.target) + ' 造成 ' + amount + ' 点伤害。', { source: hit.source, target: hit.target, amount, reflected });
+    log('damage', name(hit.source) + ' 的' + MOVES[hit.move].name + '对 ' + name(hit.target) + ' 造成 ' + amount + ' 点伤害。', { source: hit.source, target: hit.target, amount, reflected, move: hit.move });
   };
   hits.forEach((hit, i) => { if (!suppressed.has(i)) deal(hit); });
   for (const p of alive) {

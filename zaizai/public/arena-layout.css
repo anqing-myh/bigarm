@@ -160,3 +160,18 @@ dialog .battle-log .log-content{max-height:min(52dvh,480px)}
 .table-action.muted{text-decoration:line-through;color:#c2a9d2;opacity:.82}
 @keyframes tableActionIn{from{opacity:0}to{opacity:1}}
 @media(max-width:600px){.table-action{padding:3px;border-radius:7px}.table-action-seat{font-size:.72em}}
+
+/* 2D arena stage and per-move effects, painted beneath the seats. */
+.arena>.arena-fx{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;pointer-events:none}
+
+/* The interrupt decision must stay legible above revealed move cards. */
+.game-room .arena-controls:has(.interrupt-panel){z-index:6}
+.game-room .interrupt-panel{background:#292230;border:1px solid #806597;box-shadow:0 8px 28px #0008}
+
+/* Ice remains on every revealed card; the next-round ban stays in player status. */
+.table-action.is-frozen::after{content:'';position:absolute;inset:-2px;border:2px solid #c7ecff;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,#e4f8ff80,transparent 35%,#b8eaff25 65%,#e4f8ff70);box-shadow:inset 0 0 12px #c7ecff88,0 0 12px #97dfff55;animation:moveFreeze .5s .45s ease-out both}
+.table-action.is-frozen::before{content:'❄';position:absolute;z-index:1;right:-5px;top:-9px;color:#e0f5ff;font-size:18px;text-shadow:0 0 7px #9bdbff;animation:moveFreeze .5s .45s ease-out both}
+@keyframes moveFreeze{from{opacity:0;filter:blur(4px)}to{opacity:1;filter:blur(0)}}
+.game-room .damage-float,.game-room .heal-float{white-space:nowrap;line-height:1.2}
+.game-room .damage-float+.heal-float{top:50px}
+@media(prefers-reduced-motion:reduce){.table-action.is-frozen::before,.table-action.is-frozen::after{animation:none}}
