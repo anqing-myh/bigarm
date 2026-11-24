@@ -137,6 +137,30 @@ location / {
 
 头像下方公开显示生命、仔、圣盾、锤、防的当前数量；雪崩生效时显示各自禁用的招式。亮招时，超过两名玩家提交招式则显示定向招式的目标昵称（如“火球 → 玩家昵称”）；金盾始终显示预判反弹的招式（如“金盾：火球”）。
 
+### systemd 服务器更新
+
+如果服务器从本仓库稀疏检出 `zaizai/`，并使用 systemd 以 `zaizai` 服务运行在 3100 端口，发布新版本时在服务器终端执行：
+
+```sh
+cd /www/wwwroot/zaizai-deploy
+git status --short
+git pull --ff-only origin main
+git sparse-checkout reapply
+systemctl restart zaizai
+systemctl status zaizai --no-pager
+curl http://127.0.0.1:3100/api/health
+```
+
+`git status --short` 如果显示服务器上手动修改过的文件，先检查并处理这些修改，再执行更新；不要用 `git reset --hard` 覆盖它们。服务重启会清空内存中的房间和正在进行的对局，建议在没有对局时更新。正常情况下仔仔不需要安装生产依赖；只有 `package-lock.json` 或运行依赖发生变化时，才在 `zaizai/` 目录执行 `npm ci --omit=dev`，然后重新启动服务：
+
+```sh
+cd /www/wwwroot/zaizai-deploy/zaizai
+npm ci --omit=dev
+systemctl restart zaizai
+```
+
+本仓库公开时，上述命令可以公开放在文档中：其中没有密码、令牌或私钥。不要把 GitHub Token、SSH 私钥、宝塔密码或服务器密钥写入 README、脚本或 Git 提交。
+
 ## 全部招式
 
 | 招式 | 消耗 | 效果 |
