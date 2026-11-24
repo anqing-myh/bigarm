@@ -46,6 +46,7 @@ test('HTTP identity, capacity, origin, static allowlist and shared pure module',
   const rules = await f.api('/api/rules'); assert.equal(Object.keys(rules.moves).length, 57);
   assert.equal((await fetch(f.base + '/rules/engine.js')).status, 200);
   assert.equal((await fetch(f.base + '/rules/catalog.js')).status, 200);
+  assert.equal((await fetch(f.base + '/interaction.js')).status, 200);
   assert.equal((await fetch(f.base + '/rules/../package.json')).status, 404);
 });
 test('multiplayer lock secrecy, full match, exactly-once result and restart', async t => {

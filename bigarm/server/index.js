@@ -214,7 +214,7 @@ export function createServer(options = {}) {
         res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : data);
       }
-      const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/styles.css': ['styles.css', 'text/css'], '/game.css': ['game.css', 'text/css'] };
+      const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/interaction.js': ['interaction.js', 'text/javascript'], '/styles.css': ['styles.css', 'text/css'], '/game.css': ['game.css', 'text/css'] };
       const entry = files[url.pathname]; if (!entry) return json(res, 404, { error: '页面不存在。' });
       const data = await readFile(path.join(publicDir, entry[0])); res.writeHead(200, { 'Content-Type': `${entry[1]}; charset=utf-8`, 'Cache-Control': 'no-cache' }); res.end(req.method === 'HEAD' ? undefined : data);
     } catch (error) { if (!res.headersSent) json(res, 400, { error: error.message || '操作失败。' }); else res.end(); }

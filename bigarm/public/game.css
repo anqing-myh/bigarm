@@ -4,3 +4,136 @@
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .arena.many-players{height:760px}
 @media(max-width:640px){.arena.many-players{height:680px}.many-players .seat{width:80px}.many-players .seat .avatar{width:38px;height:34px}}
+
+/* The battlefield and command panel share the viewport. Lists scroll independently. */
+.in-game .site-header { height: 68px; }
+.in-game .site-footer { display: none; }
+.in-game .room-toolbar { margin: 10px 0; min-height: 48px; }
+.in-game .room-title small { display: block; line-height: 12px; }
+.in-game .room-title h1 { line-height: 30px; }
+.battle-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; height: calc(100dvh - 146px); min-height: 460px; }
+.battle-layout .arena-wrap { display: flex; flex-direction: column; min-height: 0; border-radius: 16px; }
+.battle-layout .arena-corner { position: static; flex-shrink: 0; height: 36px; padding: 3px 12px; justify-content: flex-end; }
+.battle-layout .arena, .battle-layout .arena.many-players { height: auto; width: 100%; max-width: none; flex: 1; min-height: 0; }
+.battle-layout .arena-circle { width: 66%; height: 70%; }
+.battle-layout .arena-center { width: 180px; }
+.battle-layout .arena-center h2 { font-size: 17px; }
+.battle-layout .arena-center .symbol { font-size: 25px; }
+.battle-layout .seat { width: 110px; }
+.battle-layout .seat .avatar { width: 48px; height: 43px; }
+.battle-layout .seat strong { line-height: 16px; }
+.battle-layout .seat .vitals { display: block; line-height: 15px; }
+.battle-layout .seat .resources { display: grid; line-height: 12px; }
+.battle-layout .seat .equipment-line { display: block; line-height: 13px; }
+.battle-layout .mobile-status { display: block; flex-shrink: 0; font-size: 10px; padding: 7px 12px; color: var(--muted); border-top: 1px solid var(--line); }
+.command-panel { min-width: 0; min-height: 0; position: relative; }
+.command-panel > .panel { max-height: 100%; overflow-y: auto; margin: 0; padding: 16px; }
+.command-panel .panel h2 { font-size: 17px; margin-bottom: 10px; }
+.command-panel .panel p { font-size: 12px; }
+.command-panel > .blessing-panel { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.blessing-panel > h2, .blessing-panel > p { flex-shrink: 0; }
+.blessing-panel #blessing { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 8px; margin-top: 8px; }
+.blessing-events { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 3px; }
+#blessing > .primary-button, #blessing-error { flex-shrink: 0; }
+.command-panel .ready-panel { flex-direction: column; align-items: stretch; }
+.command-panel .arsenal { margin: 0; padding: 14px; border-radius: 14px; }
+.command-panel .arsenal-heading { margin-bottom: 10px; gap: 4px; }
+.command-panel .arsenal-heading h2 { font-size: 16px; }
+.command-panel .arsenal-heading button { font-size: 11px; padding: 4px 0; }
+.basic-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.basic-action { border: 1px solid #43533a; border-radius: 7px; background: #253320; min-height: 42px; padding: 7px 4px; font-size: 12px; }
+.basic-action small { color: var(--muted); margin-left: 4px; }
+.basic-action.selected, .move-result.selected { border-color: var(--accent); background: #33472a; }
+.basic-action:disabled { opacity: .4; cursor: not-allowed; }
+.move-search-wrap { position: relative; margin: 10px 0; }
+#move-search { width: 100%; font-size: 12px; padding: 10px; }
+.move-results { position: absolute; z-index: 6; top: calc(100% + 5px); left: 0; right: 0; max-height: min(42dvh, 300px); overflow-y: auto; overscroll-behavior: contain; padding: 7px; border: 1px solid #69834e; border-radius: 9px; background: #1b2819; box-shadow: 0 12px 32px #0008; }
+.move-results[hidden], .blessing-quick[hidden] { display: none; }
+.move-result { display: flex; width: 100%; align-items: center; justify-content: space-between; text-align: left; gap: 10px; background: #263421; border: 1px solid #445438; border-radius: 7px; padding: 10px; min-height: 40px; }
+.move-result + .move-result { margin-top: 5px; }
+.move-result b { font-size: 12px; }
+.move-result small { font-size: 10px; color: var(--muted); }
+.move-result:focus-visible, .basic-action:focus-visible, .blessing-quick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.available-list { max-height: 60dvh; overflow-y: auto; margin-top: 16px; padding: 2px; }
+.selected-action { display: flex; align-items: center; gap: 8px; font-size: 12px; min-height: 28px; }
+.selected-action span { font-size: 10px; color: var(--muted); flex: 1; }
+.selected-action button { font-size: 11px; padding: 2px; }
+.command-panel .lock-row { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px; }
+.command-panel .lock-row .primary-button { padding: 11px 12px; }
+.command-panel .target-hint { font-size: 11px; min-height: 15px; }
+.command-panel .direction { gap: 6px; margin: 6px 0; }
+.command-panel .direction button { font-size: 11px; padding: 5px 8px; }
+.blessing-event { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.blessing-heading { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.blessing-heading span { color: var(--muted); }
+.blessing-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; }
+.blessing-shortcuts { display: flex; flex: 1 0 100%; gap: 7px; }
+.blessing-quick { width: 36px; height: 34px; background: #2d4025; border: 1px solid #6d8951; border-radius: 7px; }
+.blessing-quick[aria-pressed=true] { color: #152010; background: var(--accent); }
+.blessing-controls input { width: 70px; padding: 6px; }
+.blessing-controls .text-button { font-size: 11px; padding: 5px; }
+.validation-error { color: #ffafa1; font-size: 11px; }
+.validation-error:empty { display: none; }
+.combat-feedback { position: absolute; pointer-events: none; left: 50%; top: 3px; transform: translate(-50%, -100%); z-index: 4; display: grid; gap: 3px; width: max-content; max-width: 160px; }
+.combat-fx { display: block; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: bold; background: #34201f; color: #ffb6a6; box-shadow: 0 3px 12px #0008; animation: combat-float 2400ms both; }
+.combat-fx.heal { background: #23391c; color: #d2ffab; }
+.combat-fx.shield-loss { background: #213449; color: #adceff; }
+.combat-fx.shield-gain { background: #24382c; color: #9ef4d2; }
+.taking-damage .avatar { animation: damage-flash 2400ms both; animation-delay: var(--impact-age, 0ms); }
+@keyframes combat-float { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 12%, 75% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-18px); } }
+@keyframes damage-flash { 0%, 20% { filter: drop-shadow(0 0 8px #ff7b62); transform: translateX(-3px); } 10%, 30% { transform: translateX(3px); } 40%, 100% { filter: none; transform: none; } }
+@media (max-width: 979px) {
+  .in-game .site-header { height: 54px; }
+  .in-game .room-toolbar { margin: 6px 0; min-height: 42px; flex-wrap: nowrap; }
+  .in-game .room-title h1 { font-size: 17px; }
+  .in-game .room-title small { font-size: 9px; }
+  .in-game .toolbar-actions { width: auto; flex-shrink: 0; }
+  .in-game .toolbar-actions button { padding: 5px 7px; min-height: 30px; }
+  .battle-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(210px, 1fr) auto; height: calc(100dvh - 116px); min-height: 480px; gap: 8px; }
+  .command-panel { max-height: 43dvh; }
+  .command-panel:has(.blessing-panel) { height: 43dvh; }
+  .command-panel > .panel { max-height: 43dvh; }
+  .command-panel .arsenal { padding: 10px 12px; }
+  .command-panel .arsenal-heading { margin-bottom: 6px; }
+  .basic-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+  .basic-action { min-height: 36px; padding: 5px 2px; font-size: 11px; }
+  .basic-action small { font-size: 9px; margin-left: 2px; }
+  .move-search-wrap { margin: 7px 0 4px; }
+  #move-search { padding: 8px; }
+  .move-results { top: auto; bottom: calc(100% + 5px); max-height: min(40dvh, 320px); }
+  .command-panel .lock-row { flex-direction: row; align-items: center; gap: 6px; margin-top: 4px; }
+  .command-panel .target-hint { flex: 1; }
+  .command-panel .lock-row .primary-button { font-size: 12px; padding: 9px 12px; }
+  .battle-layout .arena-center { width: 140px; }
+  .battle-layout .arena-center h2 { font-size: 14px; }
+  .battle-layout .arena-center .symbol { display: none; }
+  .battle-layout .seat .resources { display: none; }
+  .battle-layout .arena-center p { font-size: 10px; }
+  .battle-layout .clock { margin-top: 5px; font-size: 19px; }
+}
+@media (max-width: 640px) {
+  .in-game #app { padding: 0 8px; }
+  .in-game .site-header { padding: 0 10px; }
+  .in-game .brand-mark { width: 28px; height: 28px; }
+  .in-game .site-header nav { gap: 8px; }
+  .in-game #rules-button { display: none; }
+  .in-game .room-title { min-width: 0; }
+  .in-game .room-title h1 { max-width: 160px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .battle-layout .seat { width: 82px; }
+  .battle-layout .seat .avatar { width: 34px; height: 29px; }
+  .battle-layout .many-players .seat { width: 70px; }
+  .battle-layout .many-players .seat .avatar { width: 29px; height: 25px; }
+  .battle-layout .many-players .seat strong, .battle-layout .many-players .seat .vitals { line-height: 12px; font-size: 9px; }
+  .battle-layout .many-players .seat .equipment-line { display: none; }
+  .battle-layout .arena-corner { height: 29px; gap: 8px; padding: 2px 10px; }
+  .battle-layout .arena-center { width: 120px; }
+  .battle-layout .arena-center h2 { font-size: 12px; }
+  .battle-layout .mobile-status { font-size: 9px; padding: 5px 8px; }
+  .combat-fx { font-size: 10px; padding: 3px 5px; }
+}
+@media (max-height: 740px) and (max-width: 979px) {
+  .battle-layout .seat .avatar { width: 26px; height: 23px; }
+  .battle-layout .seat .equipment-line { display: none; }
+  .battle-layout .arena-center h2 { margin: 3px 0; }
+  .battle-layout .mobile-status { padding: 3px 7px; }
+}

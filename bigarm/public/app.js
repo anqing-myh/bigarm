@@ -1,11 +1,12 @@
 import { MOVES, EQUIPMENT, RESOURCE_NAMES, availableMoves } from '/rules/engine.js';
+import { searchMoves, blessingTotal, blessingLimit, combatChanges } from '/interaction.js';
 
 const $ = selector => document.querySelector(selector);
 const app = $('#app'), modal = $('#modal'), modalContent = $('#modal-content');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let token = sessionStorage.getItem('bigarm-token'), data = null, key = '', busy = false, offset = 0;
-const ui = { move: 'basicB', targets: [], tab: 'basic', direction: 'clockwise', blessing: {}, roomName: '', capacity: 10 };
-const labels = { basic: '积蓄资源', attack: '攻击招式', equipment: '盾与生产器', spell: '法术防护' };
+const ui = { move: 'basicB', targets: [], search: '', direction: 'clockwise', blessing: {}, roomName: '', capacity: 10 };
+let composing = false, feedback = [], feedbackId = 0, feedbackTimer;
 const spellDescriptions = {
   shock: '指定另一名玩家，移除一件可被小电移除的装备，由受术者选择。自己本回合 2 级免伤。',
   phoenixGuard: '本回合获得 2 级免伤与 2 级免控。', ghostDodge: '本回合和下回合拥有超闪防法，不获得超闪资源。',
@@ -48,12 +49,19 @@ async function api(path, body, method = 'POST') {
 function receive(next) {
   if (data && next.revision < data.revision) return;
   const newRound = next.room?.phase === 'selecting' && (data?.room?.round !== next.room.round || data?.room?.gameNumber !== next.room.gameNumber);
-  if (newRound) { ui.move = 'basicB'; ui.targets = []; ui.blessing = {}; }
+  if (newRound) { ui.move = 'basicB'; ui.targets = []; ui.search = ''; }
+  if (data?.room?.pending?.id !== next.room?.pending?.id) ui.blessing = {};
+  if (data?.room?.id !== next.room?.id || data?.room?.gameNumber !== next.room?.gameNumber) feedback = [];
+  const now = Date.now();
+  feedback = feedback.filter(f => f.until > now);
+  feedback.push(...combatChanges(data?.room, next.room).map(f => ({ ...f, id: ++feedbackId, start: now, until: now + 2400 })));
+  clearTimeout(feedbackTimer);
+  if (feedback.length) feedbackTimer = setTimeout(() => { feedback = feedback.filter(f => f.until > Date.now()); key = ''; render(); }, Math.min(...feedback.map(f => f.until)) - now + 20);
   offset = next.serverTime - Date.now(); data = next; connected(true); render();
 }
 async function refresh() { if (!token) return; const identity = token; const next = await api('/api/state', undefined, 'GET'); if (identity === token) receive(next); }
 async function polling() { try { await refresh(); } catch { connected(false); } finally { setTimeout(polling, 800); } }
-function show(content) { modalContent.innerHTML = content; if (!modal.open) modal.showModal(); }
+function show(content) { modal.dataset.kind = ''; modalContent.innerHTML = content; if (!modal.open) modal.showModal(); }
 function home() {
   return `<section class="hero"><div><span class="pill"><span class="live-dot"></span> 与朋友，共赴一场策略对决</span><h1>积蓄力量，<br>见招拆招<span class="accent">。</span></h1><p>六种资源，百般变化。<br>蓄力、造盾、预判——在同时亮招的瞬间，决定胜负。</p><form id="login" class="login-card"><label for="nickname">给自己起一个临时昵称</label><div class="input-row"><input id="nickname" name="name" maxlength="12" required placeholder="你在战场上的名字" autocomplete="nickname"><button class="primary-button">进入大厅 ↗</button></div><small class="fine">无需账号 · 2–10 人联机 · 手机与电脑都能玩</small></form><button class="text-button" data-act="rules">先看看招式手册 →</button></div><div class="hero-art" aria-label="大臂竞技场插画"><div class="art-grid"></div><div class="orbit outer"></div><div class="orbit"></div><span class="art-label">BIGARM / ROUND 01</span><div class="hero-creature">${avatar(0)}</div><div class="hero-creature two">${avatar(1)}</div><div class="hero-creature three">${avatar(2)}</div><span class="float-card">✦ 积蓄，等待时机</span><span class="float-card lower">◇ 护盾，守住每一招</span><span class="art-bottom">● 同时选择 · 同时亮招 · 一起开局</span></div></section><section class="steps"><div><span class="eyebrow">HOW TO PLAY</span><h2>三步，进入战场。</h2></div><div><h3>01 / 叫上朋友</h3><p>创建房间，分享房间号或邀请链接。</p></div><div><h3>02 / 选择招式</h3><p>积蓄六种资源，制造护盾，指定目标。</p></div><div><h3>03 / 同时亮招</h3><p>比较攻击点数，完成选盾与减伤，决出胜者。</p></div></section>`;
 }
@@ -68,7 +76,8 @@ function seats(room) {
     const action = revealed[p.id], selected = ui.targets.includes(p.id);
     const m = MOVES[ui.move], canTarget = room.phase === 'selecting' && !room.ownAction && ['single', 'dual', 'splash'].includes(m?.target) && p.id !== data.self.id && p.hp > 0;
     const bubble = action ? `${MOVES[action.move]?.name || ''}${action.targets?.length ? ' → ' + action.targets.map(id => nameOf(id)).join('、') : ''}` : room.submitted.includes(p.id) ? '已锁定' : p.ready ? '已准备' : '';
-    return `<button class="seat ${p.id === data.self.id ? 'mine' : ''} ${p.hp <= 0 ? 'dead' : ''} ${selected ? 'selected' : ''} ${canTarget ? 'targetable' : ''}" data-act="seat" data-id="${p.id}" data-position="${(index - ownIndex + members.length) % members.length}" data-count="${members.length}" aria-label="${esc(p.name)}，${p.hp} 生命${canTarget ? '，选择目标' : ''}">${bubble ? `<span class="bubble">${esc(bubble)}</span>` : ''}${avatar(p.seat)}<strong>${p.seat + 1}. ${esc(p.name)}${p.id === data.self.id ? ' · 你' : ''}</strong><span class="vitals">♥ ${p.hp} / ${p.maxHp}${p.resources.Q ? ' · 祝 ' + p.resources.Q : ''}</span><span class="resources">${Object.entries(RESOURCE_NAMES).filter(([k]) => k !== 'Q').map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</span><span class="equipment-line">${p.shields.map(s => EQUIPMENT[s.type].name).join(' · ') || (p.connected ? '暂无装备' : '暂时离线')}</span></button>`;
+    const effects = feedback.filter(f => f.playerId === p.id);
+    return `<button class="seat ${p.id === data.self.id ? 'mine' : ''} ${p.hp <= 0 ? 'dead' : ''} ${selected ? 'selected' : ''} ${canTarget ? 'targetable' : ''} ${effects.some(f => f.kind === 'damage') ? 'taking-damage' : ''}" data-act="seat" data-id="${p.id}" data-position="${(index - ownIndex + members.length) % members.length}" data-count="${members.length}" aria-label="${esc(p.name)}，${p.hp} 生命${canTarget ? '，选择目标' : ''}">${bubble ? `<span class="bubble">${esc(bubble)}</span>` : ''}${avatar(p.seat)}<strong>${p.seat + 1}. ${esc(p.name)}${p.id === data.self.id ? ' · 你' : ''}</strong><span class="vitals">♥ ${p.hp} / ${p.maxHp}${p.resources.Q ? ' · 祝 ' + p.resources.Q : ''}</span><span class="resources">${Object.entries(RESOURCE_NAMES).filter(([k]) => k !== 'Q').map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</span><span class="equipment-line">${p.shields.map(s => EQUIPMENT[s.type].name).join(' · ') || (p.connected ? '暂无装备' : '暂时离线')}</span>${effects.length ? `<span class="combat-feedback" role="status">${effects.map(f => `<span class="combat-fx ${f.kind}" data-feedback="${f.id}">${esc(f.text)}</span>`).join('')}</span>` : ''}</button>`;
   }).join('');
 }
 function detail(m) {
@@ -79,7 +88,7 @@ function choicePanel(room) {
   const c = room.pending, mine = c.playerId === data.self.id;
   const title = { shock: '小电生效 · 选择移除装备', shield: '攻击命中 · 选择承伤护盾', blessing: '回合末 · 分配祝福减伤', discard: '装备超限 · 选择必要弃置' }[c.kind];
   if (!mine) return `<section class="panel choice-panel"><h2>${title}</h2><p>等待 ${esc(nameOf(c.playerId))} 完成选择。</p><span class="clock" data-countdown></span></section>`;
-  if (c.kind === 'blessing') return `<section class="panel choice-panel"><h2>${title}</h2><p>可用 ${c.budget} 祝福值。每次最终伤害必须大于 0；花费需为整数。</p><form id="blessing">${c.events.map(e => `<label class="blessing-row">${esc(MOVES[e.move].name)} · ${e.amount} 伤害<input type="number" name="${e.id}" min="0" max="${Math.min(e.max, c.budget)}" step="1" value="${ui.blessing[e.id] || 0}" aria-label="${esc(MOVES[e.move].name)}的祝福减伤"></label>`).join('')}<button class="primary-button">确认减伤</button></form></section>`;
+  if (c.kind === 'blessing') return `<section class="panel choice-panel blessing-panel"><h2>${title}</h2><p>可用 ${c.budget} 点，剩余 <b id="blessing-left"></b> 点。每次伤害分别减伤，至少保留大于 0 的伤害。</p><form id="blessing"><div class="blessing-events">${c.events.map(e => `<div class="blessing-event" data-event="${e.id}"><div class="blessing-heading"><b>${esc(MOVES[e.move].name)}</b><span>${esc(nameOf(e.source))} → ${e.amount} 伤害</span></div><div class="blessing-controls"><div class="blessing-shortcuts">${[1, 2, 3, 4, 5].map(n => `<button type="button" class="blessing-quick" data-act="bless" data-id="${e.id}" data-value="${n}" aria-label="${esc(MOVES[e.move].name)}减伤${n}点">${n}</button>`).join('')}</div><label>用 <input type="number" inputmode="numeric" name="${e.id}" min="0" max="${blessingLimit(c, ui.blessing, e.id)}" step="1" value="${esc(ui.blessing[e.id] ?? 0)}" required aria-label="${esc(MOVES[e.move].name)}的祝福减伤"> 点</label><button type="button" class="text-button" data-act="bless" data-id="${e.id}" data-value="0">不用</button></div><p class="fine blessing-outcome"></p></div>`).join('')}</div><p id="blessing-error" class="validation-error" role="status"></p><button class="primary-button">确认减伤</button></form></section>`;
   return `<section class="panel choice-panel"><h2>${title}</h2><p>${c.kind === 'discard' ? '每个方案均只弃置恢复上限所必要的装备。' : '从当前合法对象中选择一项，结算会继续。'}</p><div class="choice-options">${c.options.map(o => `<button class="choice-option" data-act="choice" data-id="${esc(o.id)}">${esc(o.label)}</button>`).join('')}</div></section>`;
 }
 function arsenal(room, me) {
@@ -88,13 +97,48 @@ function arsenal(room, me) {
   if (room.phase === 'reveal') return `<section class="panel waiting"><h2>${room.result?.finished ? room.lastMatch?.winnerName ? `${esc(room.lastMatch.winnerName)} 获胜` : '平局' : '本回合结算完成'}</h2><p>${room.result?.damage?.length ? room.result.damage.map(d => `${esc(nameOf(d.target))} −${d.amount - d.blessing}`).join(' · ') : '本回合无人受伤'}</p><button class="text-button" data-act="history">查看战况记录 →</button></section>`;
   if (me.hp <= 0) return '<section class="panel waiting">你已阵亡，正在观战。持续攻击仍按规则生效。</section>';
   if (room.ownAction) return `<section class="panel waiting"><h2>已锁定 · ${esc(MOVES[room.ownAction.move].name)}</h2><p>其他玩家的选择在全员锁定后同时揭晓。</p></section>`;
-  const allowed = availableMoves({ players: room.players, round: room.round }, me.id), visible = allowed.filter(m => m.type === ui.tab), m = MOVES[ui.move];
-  return `<section class="arsenal"><div class="arsenal-heading"><h2>选择你的招式</h2><span class="fine">只显示当前可用招式</span></div><div class="tabs">${Object.entries(labels).map(([id, label]) => `<button class="${id === ui.tab ? 'active' : ''}" data-act="tab" data-id="${id}">${label}</button>`).join('')}</div><div class="moves">${visible.length ? visible.map(m => `<button class="move-card ${ui.move === m.id ? 'selected' : ''}" data-act="move" data-id="${m.id}" aria-pressed="${ui.move === m.id}"><b>${esc(m.name)}</b><small>${esc(cost(m))}</small></button>`).join('') : '<p class="fine">暂时没有可用招式，先积蓄对应资源。</p>'}</div><div class="action-detail">${detail(m)}</div>${m.target === 'path' ? `<div class="direction"><button class="secondary-button small" data-act="direction" data-id="clockwise" aria-pressed="${ui.direction === 'clockwise'}">${ui.direction === 'clockwise' ? '✓ ' : ''}顺时针</button><button class="secondary-button small" data-act="direction" data-id="counterclockwise" aria-pressed="${ui.direction === 'counterclockwise'}">${ui.direction === 'counterclockwise' ? '✓ ' : ''}逆时针</button></div>` : ''}<div class="lock-row"><span class="target-hint">${m.target === 'dual' ? '点击头像选择一至两名不同目标' : ['single', 'splash'].includes(m.target) ? '点击战场头像选择目标' : m.target === 'path' ? '从对应方向邻座分配点数，按高点优先结算' : '无需指定目标'}${ui.targets.length ? ' · ' + ui.targets.map(id => esc(nameOf(id))).join('、') : ''}</span><button class="primary-button" data-act="lock" ${busy ? 'disabled' : ''}>锁定 · ${esc(m.name)} ↗</button></div></section>`;
+  const allowed = legalMoves(room);
+  if (!allowed.some(m => m.id === ui.move)) { ui.move = allowed[0].id; ui.targets = []; }
+  const m = MOVES[ui.move], basics = allowed.filter(m => m.type === 'basic');
+  const results = ui.search.trim() ? searchMoves(allowed.filter(m => m.type !== 'basic'), ui.search) : [];
+  return `<section class="arsenal"><div class="arsenal-heading"><h2>选择招式</h2><button class="text-button" data-act="all-moves">查看所有可出招式</button></div><div class="basic-actions">${Object.values(MOVES).filter(m => m.type === 'basic').map(m => `<button class="basic-action ${ui.move === m.id ? 'selected' : ''}" data-act="move" data-id="${m.id}" aria-pressed="${ui.move === m.id}" ${basics.includes(m) ? '' : 'disabled title="连续闪避限制，本回合不可用"'}>${esc(m.name)}<small>+${me.shields.some(s => EQUIPMENT[s.type].producer === m.resource) ? 3 : 1}</small></button>`).join('')}</div><div class="move-search-wrap"><input id="move-search" type="search" autocomplete="off" placeholder="搜招式：文字 / 拼音 / 首字母" value="${esc(ui.search)}" aria-label="搜索可出招式" aria-controls="move-results" aria-expanded="${!!ui.search.trim()}"><div id="move-results" class="move-results" ${ui.search.trim() ? '' : 'hidden'}>${results.length ? results.map(moveButton).join('') : '<p class="fine">没有匹配的可出招式，试试其他关键词或先积蓄资源。</p>'}</div></div><div class="selected-action"><b>${esc(m.name)}</b><span>${esc(cost(m))}</span><button class="text-button" data-act="move-detail" data-id="${m.id}" aria-label="查看${esc(m.name)}说明">说明</button></div>${m.target === 'path' ? `<div class="direction"><button class="secondary-button small" data-act="direction" data-id="clockwise" aria-pressed="${ui.direction === 'clockwise'}">${ui.direction === 'clockwise' ? '✓ ' : ''}顺时针</button><button class="secondary-button small" data-act="direction" data-id="counterclockwise" aria-pressed="${ui.direction === 'counterclockwise'}">${ui.direction === 'counterclockwise' ? '✓ ' : ''}逆时针</button></div>` : ''}<div class="lock-row"><span class="target-hint">${m.target === 'dual' ? '点头像选 1～2 人' : ['single', 'splash'].includes(m.target) ? '点头像选择目标' : m.target === 'path' ? '按所选方向分配点数' : '无需指定目标'}${ui.targets.length ? ' · ' + ui.targets.map(id => esc(nameOf(id))).join('、') : ''}</span><button class="primary-button" data-act="lock" ${busy ? 'disabled' : ''}>锁定 · ${esc(m.name)} ↗</button></div></section>`;
+}
+function legalMoves(room) { return availableMoves({ players: room.players, round: room.round }, data.self.id); }
+function moveButton(m) { return `<button class="move-result ${ui.move === m.id ? 'selected' : ''}" data-act="move" data-id="${m.id}"><b>${esc(m.name)}</b><small>${esc(cost(m))}</small></button>`; }
+function showAllMoves() {
+  const room = data?.room;
+  if (room?.phase !== 'selecting' || room.ownAction) { modal.close(); return; }
+  const moves = legalMoves(room), signature = JSON.stringify([moves.map(m => m.id), ui.move]);
+  if (modal.open && modal.dataset.kind === 'available' && modal.dataset.signature === signature) return;
+  show(`<h2>所有可出招式</h2><p class="fine">仅列出本回合可用的招式，点击即可选择。</p><div class="available-list">${moves.map(moveButton).join('')}</div>`);
+  modal.dataset.kind = 'available';
+  modal.dataset.signature = signature;
+}
+function updateBlessingControls() {
+  const c = data?.room?.pending, form = $('#blessing');
+  if (!form || c?.kind !== 'blessing') return;
+  const total = blessingTotal(c, ui.blessing);
+  $('#blessing-left').textContent = c.budget - total;
+  let valid = total <= c.budget;
+  for (const event of c.events) {
+    const row = form.querySelector(`[data-event="${event.id}"]`), max = blessingLimit(c, ui.blessing, event.id);
+    const input = row.querySelector('input'), amount = Number(ui.blessing[event.id] ?? 0);
+    input.max = max;
+    const legal = input.value !== '' && Number.isInteger(amount) && amount >= 0 && amount <= max;
+    valid &&= legal;
+    for (const button of row.querySelectorAll('.blessing-quick')) {
+      button.hidden = Number(button.dataset.value) > max;
+      button.setAttribute('aria-pressed', String(Number(button.dataset.value) === amount));
+    }
+    row.querySelector('.blessing-outcome').textContent = legal ? `承受 ${event.amount - amount} 伤害${max === 0 ? ' · 当前无法再减伤' : ''}` : `请输入 0～${max} 的整数`;
+  }
+  $('#blessing-error').textContent = valid ? '' : '减伤不能超过剩余祝福值，也不能将单次伤害减到 0。';
+  form.querySelector('[type=submit],button.primary-button').disabled = !valid || busy;
 }
 function roomPage(room) {
   const me = room.players.find(p => p.id === data.self.id), active = room.players.filter(p => !p.left), living = active.filter(p => p.hp > 0);
   const title = room.phase === 'selecting' ? room.ownAction ? '已锁定，等待亮招' : '秘密选择，同时亮招' : room.phase === 'choice' ? '完成回合中的选择' : room.phase === 'reveal' ? '同时亮招 · 结算结果' : room.phase === 'finished' ? '本局结束' : '集结，准备开局';
-  return `<div class="room-toolbar"><div class="room-title"><small>ROOM / ${room.id}</small><h1>${esc(room.name)}</h1></div><div class="toolbar-actions"><button class="secondary-button small" data-act="invite">邀请朋友 ↗</button><button class="text-button" data-act="leave">退出房间</button></div></div><section class="arena-wrap"><div class="arena-corner"><button class="text-button" data-act="scores">胜场榜</button><button class="text-button" data-act="history">战况记录</button><button class="text-button" data-act="rules">招式手册</button></div><div class="arena ${active.length > 6 ? 'many-players' : ''}"><div class="arena-circle"></div><div class="arena-center"><span class="eyebrow">${room.round ? 'ROUND ' + String(room.round).padStart(2, '0') : 'BIGARM ARENA'}</span><div class="symbol">✦</div><h2>${title}</h2><p>${room.phase === 'selecting' ? `${room.submitted.length} / ${living.length} 已锁定` : `${active.length} / ${room.capacity} 人 · ${living.length} 人存活`}</p><div class="clock" data-countdown></div></div>${seats(room)}</div><div class="mobile-status">你的资源：${Object.entries(RESOURCE_NAMES).map(([k, name]) => `${name} ${me.resources[k]}`).join(' · ')}<br>点击玩家头像查看完整资源、盾层与持续效果。</div></section>${arsenal(room, me)}`;
+  return `<div class="room-toolbar"><div class="room-title"><small>ROOM / ${room.id}</small><h1>${esc(room.name)}</h1></div><div class="toolbar-actions"><button class="secondary-button small" data-act="invite">邀请朋友 ↗</button><button class="text-button" data-act="leave">退出房间</button></div></div><div class="battle-layout"><section class="arena-wrap"><div class="arena-corner"><button class="text-button" data-act="scores">胜场榜</button><button class="text-button" data-act="history">战况记录</button><button class="text-button" data-act="rules">招式手册</button></div><div class="arena ${active.length > 6 ? 'many-players' : ''}"><div class="arena-circle"></div><div class="arena-center"><span class="eyebrow">${room.round ? 'ROUND ' + String(room.round).padStart(2, '0') : 'BIGARM ARENA'}</span><div class="symbol">✦</div><h2>${title}</h2><p>${room.phase === 'selecting' ? `${room.submitted.length} / ${living.length} 已锁定` : `${active.length} / ${room.capacity} 人 · ${living.length} 人存活`}</p><div class="clock" data-countdown></div></div>${seats(room)}</div><div class="mobile-status">你的资源：${Object.entries(RESOURCE_NAMES).map(([k, name]) => `${name} ${me.resources[k]}`).join(' · ')}</div></section><aside class="command-panel">${arsenal(room, me)}</aside></div>`;
 }
 function positionSeats() {
   const arena = $('.arena'); if (!arena) return;
@@ -102,15 +146,33 @@ function positionSeats() {
   for (const el of document.querySelectorAll('.seat')) {
     const angle = Math.PI / 2 + Number(el.dataset.position) * Math.PI * 2 / Number(el.dataset.count);
     el.style.left = `${w / 2 + Math.cos(angle) * (w / 2 - (mobile ? 48 : 85))}px`;
-    el.style.top = `${h / 2 + Math.sin(angle) * (h / 2 - (mobile ? 100 : 115))}px`;
+    el.style.top = `${h / 2 + Math.sin(angle) * Math.max(40, h / 2 - (mobile ? 53 : 85))}px`;
   }
 }
 function render() {
+  if (composing) return;
   const stable = JSON.stringify([data?.self, data?.rooms, data?.room, ui, token ? true : false, busy]);
   if (stable === key) return; key = stable;
+  const focused = app.contains(document.activeElement) ? document.activeElement : null;
+  const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd } : focused?.name ? { name: focused.name } : null;
+  const scroll = ['.command-panel', '.command-panel > .panel', '.blessing-events', '#move-results']
+    .map(selector => [selector, $(selector)?.scrollTop || 0]);
+  document.body.classList.toggle('in-game', !!(token && data?.room));
   app.innerHTML = !token || !data ? home() : data.room ? roomPage(data.room) : lobby();
   $('#user-button').classList.toggle('hidden', !data?.self); $('#user-button').textContent = data?.self?.name || '';
-  positionSeats(); countdown();
+  for (const [selector, top] of scroll) if ($(selector)) $(selector).scrollTop = top;
+  const restore = focus?.id ? document.getElementById(focus.id) : focus?.name ? document.getElementsByName(focus.name)[0] : null;
+  if (restore) { restore.focus({ preventScroll: true }); if (focus.start != null) restore.setSelectionRange(focus.start, focus.end); }
+  for (const el of document.querySelectorAll('[data-feedback]')) {
+    const f = feedback.find(f => f.id === Number(el.dataset.feedback));
+    el.style.animationDelay = `${-(Date.now() - f.start)}ms`;
+  }
+  for (const el of document.querySelectorAll('.taking-damage')) {
+    const f = feedback.find(f => f.playerId === el.dataset.id && f.kind === 'damage');
+    el.style.setProperty('--impact-age', `${-(Date.now() - f.start)}ms`);
+  }
+  if (modal.open && modal.dataset.kind === 'available') showAllMoves();
+  positionSeats(); countdown(); updateBlessingControls();
 }
 function countdown() { const deadline = data?.room?.deadline; for (const el of document.querySelectorAll('[data-countdown]')) el.textContent = deadline ? `${Math.max(0, Math.ceil((deadline - Date.now() - offset) / 1000))}s` : ''; }
 function showRules(query = '') {
@@ -126,6 +188,7 @@ async function perform(action) {
   try { await action(); await refresh(); } catch (e) { toast(e.message); } finally { busy = false; key = ''; render(); }
 }
 document.addEventListener('submit', event => {
+  if (!event.target.matches('#login,#create,#join,#blessing')) return;
   event.preventDefault(); const form = event.target, fields = new FormData(form);
   if (form.id === 'login') return perform(async () => { const result = await api('/api/session', { name: fields.get('name') }); token = result.token; sessionStorage.setItem('bigarm-token', token); receive(result); const invite = new URL(location.href).searchParams.get('room'); if (invite) await api('/api/rooms/join', { roomId: invite }); });
   if (form.id === 'create') return perform(() => api('/api/rooms/create', { name: fields.get('name'), capacity: Number(fields.get('capacity')) }));
@@ -139,10 +202,21 @@ document.addEventListener('click', event => {
   if (act === 'join') return perform(() => api('/api/rooms/join', { roomId: id }));
   if (act === 'ready') return perform(() => api('/api/rooms/ready', {}));
   if (act === 'leave') return perform(() => api('/api/rooms/leave', {}));
-  if (act === 'tab') { ui.tab = id; render(); return; }
+  if (act === 'all-moves') return showAllMoves();
+  if (act === 'move-detail') return show(`<div class="rule-card">${detail(MOVES[id])}</div>`);
+  if (act === 'bless') {
+    if (room?.pending?.kind !== 'blessing' || room.pending.playerId !== data.self.id) return;
+    const amount = Number(button.dataset.value);
+    if (amount > blessingLimit(room.pending, ui.blessing, id)) return;
+    ui.blessing[id] = amount;
+    document.getElementsByName(id)[0].value = amount;
+    updateBlessingControls(); return;
+  }
   if (act === 'direction') { ui.direction = id; render(); return; }
   if (act === 'move') {
-    ui.move = id; ui.targets = [];
+    if (room?.phase !== 'selecting' || room.ownAction || !legalMoves(room).some(m => m.id === id)) return;
+    ui.move = id; ui.targets = []; ui.search = '';
+    if (modal.open && modal.dataset.kind === 'available') modal.close();
     const others = room.players.filter(p => p.hp > 0 && !p.left && p.id !== data.self.id);
     if (others.length === 1 && ['single', 'dual', 'splash'].includes(MOVES[id].target)) ui.targets = [others[0].id];
     render(); return;
@@ -170,9 +244,18 @@ document.addEventListener('click', event => {
   if (act === 'logout') return perform(async () => { if (room) await api('/api/rooms/leave', {}); token = null; data = null; sessionStorage.removeItem('bigarm-token'); modal.close(); });
 });
 document.addEventListener('input', event => {
+  if (event.target.id === 'move-search') { ui.search = event.target.value; if (!event.isComposing) render(); }
   if (event.target.id === 'rule-search') { const cursor = event.target.selectionStart; showRules(event.target.value); $('#rule-search').focus(); $('#rule-search').setSelectionRange(cursor, cursor); }
   if (event.target.closest('#create')) { ui.roomName = $('#create [name=name]').value; ui.capacity = Number($('#create [name=capacity]').value); }
-  if (event.target.closest('#blessing')) ui.blessing[event.target.name] = Number(event.target.value);
+  if (event.target.closest('#blessing')) { ui.blessing[event.target.name] = event.target.value; updateBlessingControls(); }
+});
+document.addEventListener('compositionstart', event => { if (event.target.id === 'move-search') composing = true; });
+document.addEventListener('compositionend', event => { if (event.target.id === 'move-search') { composing = false; ui.search = event.target.value; render(); } });
+document.addEventListener('keydown', event => {
+  if (event.target.id !== 'move-search' || event.isComposing) return;
+  if (event.key === 'Escape') { ui.search = ''; render(); }
+  if (event.key === 'ArrowDown') { event.preventDefault(); $('#move-results button')?.focus(); }
+  if (event.key === 'Enter') { event.preventDefault(); $('#move-results button')?.click(); }
 });
 $('#rules-button').addEventListener('click', () => showRules());
 $('#user-button').addEventListener('click', () => show(`<h2>${esc(data.self.name)}</h2><p class="fine">刷新保留同一标签页身份，新标签页可以作为另一个玩家。</p><button class="secondary-button" data-act="logout">${data.room ? '离开房间并' : ''}更换临时昵称</button>`));
