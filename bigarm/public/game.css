@@ -137,3 +137,16 @@
   .battle-layout .arena-center h2 { margin: 3px 0; }
   .battle-layout .mobile-status { padding: 3px 7px; }
 }
+
+.basic-action.cursed-dodge { color: #ffd0c5; border-color: #d47b6b; background: #4a2c27; }
+.basic-action.cursed-dodge.selected { outline: 2px solid #ffb09f; }
+.seat-effects { display: block; font-size: 9px; line-height: 13px; }
+.seat-effects .status-effect { display: block; padding: 1px 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.status-effect { display: inline-block; font-size: 10px; border: 1px solid #527c66; color: #a2e8c5; border-radius: 5px; padding: 2px 6px; margin: 2px; }
+.status-effect.negative { color: #ffb09f; border-color: #a76759; background: #532e2633; }
+.own-effects:empty, .seat-effects:empty { display: none; }
+.mobile-status > .text-button { margin-left: 8px; font-size: 10px; color: var(--accent); }
+.stock-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 16px; }
+.stock-list > div { display: flex; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 7px; padding: 10px; }
+.stock-list span { color: var(--accent); }
+.player-effects { margin: 12px 0; }

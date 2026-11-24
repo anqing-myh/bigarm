@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MOVES, EQUIPMENT, createPlayer, createMatch, beginRound, resumeRound, validateAction, addShield, equipmentLegal, availableMoves } from '../rules/engine.js';
+import { MOVES, EQUIPMENT, WEIGHTS, createPlayer, createMatch, beginRound, resumeRound, validateAction, addShield, equipmentLegal, availableMoves } from '../rules/engine.js';
 
-const p = (id, overrides = {}) => ({ ...createPlayer(id, id.toUpperCase(), id.charCodeAt(0) - 97), resources: { B: 30, Z: 30, F: 30, Y: 30, S: 30, C: 30, Q: 0 }, ...overrides });
+const p = (id, overrides = {}) => ({ ...createPlayer(id, id.toUpperCase(), id.charCodeAt(0) - 97), resources: { ...Object.fromEntries(Object.keys(WEIGHTS).map(k => [k, 30])), Q: 0 }, ...overrides });
 const a = (move, target, extra = {}) => ({ move, target, ...extra });
 const state = (...players) => createMatch(players);
 const get = (job, id) => job.state.players.find(p => p.id === id);
@@ -18,11 +18,11 @@ const battle = (s, actions) => finish(beginRound(s, actions));
 const pair = (x, y, players = [p('a'), p('b')]) => battle(state(...players), { a: x, b: y });
 const damage = (job, id) => job.damage.filter(d => d.target === id).reduce((sum, d) => sum + d.amount - d.blessing, 0);
 
-test('current catalog: 57 actions, removed moves absent, exact integer power', () => {
-  assert.deepEqual(Object.values(MOVES).reduce((r, m) => ({ ...r, [m.type]: (r[m.type] || 0) + 1 }), {}), { basic: 6, attack: 32, equipment: 11, spell: 8 });
+test('current catalog: 68 actions, removed moves absent, exact integer power', () => {
+  assert.deepEqual(Object.values(MOVES).reduce((r, m) => ({ ...r, [m.type]: (r[m.type] || 0) + 1 }), {}), { basic: 6, attack: 41, equipment: 11, spell: 10 });
   assert.equal(MOVES.phoenix.power, 200); assert.equal(MOVES.balance.power, 113);
   assert.equal(MOVES.skyCannon.power, 53); assert.equal(MOVES.sickle.power, 16);
-  for (const name of ['锤', '锤锤锤', '幽灵回旋镖', '打断']) assert.ok(!Object.values(MOVES).some(m => m.name === name));
+  for (const name of ['锤', '幽灵回旋镖', '打断']) assert.ok(!Object.values(MOVES).some(m => m.name === name));
 });
 test('T01–T03: point comparison, equal cancellation, local group suppression', () => {
   let j = pair(a('sword', 'b'), a('punch', 'a')); assert.equal(damage(j, 'a'), 0); assert.equal(damage(j, 'b'), 2);
@@ -107,7 +107,7 @@ test('T42–T46: equivalent defenses count, no reflections, void scope persists 
 });
 test('T47–T51: removed/self/duplicate/invalid inputs rejected; dead source continues, dead target removed', () => {
   const s = state(p('a'), p('b'));
-  for (const move of ['hammer', 'hammer3', 'ghostBoomerang', '__proto__']) assert.throws(() => validateAction(s, 'a', a(move, 'b')));
+  for (const move of ['hammer', 'ghostBoomerang', '__proto__']) assert.throws(() => validateAction(s, 'a', a(move, 'b')));
   assert.throws(() => validateAction(s, 'a', a('shock', 'a')));
   assert.throws(() => validateAction(s, 'a', a('quake', null, { targets: ['b', 'b'] })));
   assert.throws(() => validateAction(s, 'a', a('punch', 'missing')));
@@ -185,8 +185,9 @@ test('seats determine results regardless of player input order; status expiry an
   const s = state(p('a'), p('b'), p('c')), actions = { a: a('wave'), b: a('punch', 'a'), c: a('basicB') };
   const expected = battle(s, actions), reversed = clone(s); reversed.players.reverse();
   assert.deepEqual(battle(reversed, actions), expected);
-  let j = pair(a('voidDodge'), a('basicB')); assert.equal(get(j, 'a').effects.filter(e => e.kind === 'defense').length, 0); assert.equal(get(j, 'a').effects[0].end, 3);
+  let j = pair(a('voidDodge'), a('basicB')); assert.equal(get(j, 'a').effects.filter(e => e.kind === 'defense').length, 1); assert.equal(get(j, 'a').effects.find(e => e.kind === 'scope').end, 4);
   j = battle(j.state, { a: a('basicB'), b: a('basicB') });
+  j = battle(j.state, { a: a('basicB'), b: a('basicB') }); assert.equal(get(j, 'a').effects.length, 1);
   j = battle(j.state, { a: a('basicB'), b: a('basicB') }); assert.equal(get(j, 'a').effects.length, 0);
   const x = createPlayer('__proto__', '特殊身份', 0), y = createPlayer('other', '其他', 1);
   const job = beginRound(createMatch([x, y]), Object.fromEntries([['__proto__', { move: 'basicB' }], ['other', { move: 'basicB' }]]));

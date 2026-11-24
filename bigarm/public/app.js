@@ -1,4 +1,4 @@
-import { MOVES, EQUIPMENT, RESOURCE_NAMES, availableMoves } from '/rules/engine.js';
+import { MOVES, EQUIPMENT, RESOURCE_NAMES, BASE_RESOURCE_NAMES, availableMoves } from '/rules/engine.js';
 import { searchMoves, blessingTotal, blessingLimit, combatChanges } from '/interaction.js';
 
 const $ = selector => document.querySelector(selector);
@@ -9,9 +9,11 @@ const ui = { move: 'basicB', targets: [], search: '', direction: 'clockwise', bl
 let composing = false, feedback = [], feedbackId = 0, feedbackTimer;
 const spellDescriptions = {
   shock: '指定另一名玩家，移除一件可被小电移除的装备，由受术者选择。自己本回合 2 级免伤。',
-  phoenixGuard: '本回合获得 2 级免伤与 2 级免控。', ghostDodge: '本回合和下回合拥有超闪防法，不获得超闪资源。',
-  chainDodge: '本回合和后两回合拥有闪防法，不计入基础闪避连续次数。', voidDodge: '本回合拥有超闪防法；本回合和后两回合免疫单体、双目标和溅射，包括回旋镖。普通群攻仍需其他防护。',
-  thunderDodge: '本回合获得 2 级免伤与 2 级免控。', heal: '在攻击前恢复自己 1 生命，先按生命上限截顶。', guardSix: '免费防住本回合六拳合一，不获得资源。',
+  phoenixGuard: '本回合获得 2 级免伤与 2 级免控。', ghostDodge: '从下一回合起连续 2 回合拥有超闪防法；不获得基础超闪，但获得一个幽灵闪招式资源。',
+  chainDodge: '从下一回合起连续 3 回合拥有闪防法，不计入基础闪避连续次数。', voidDodge: '下一回合拥有超闪防法；从下一回合起连续 3 回合免疫单体、双目标和溅射，包括回旋镖。普通群攻仍需其他防护。',
+  thunderDodge: '本回合获得 2 级免伤与 2 级免控。', heal: '在攻击前恢复自己 1 生命，先按生命上限截顶。', guardSix: '免费防住本回合六拳合一；不获得基础资源，但获得一个同名招式资源。',
+  axi: '回合最开始流失 1 体力，不能免疫或用祝福减免；本回合优先无敌（2 级免伤、2 级免控）。',
+  crucio: '指定另一名玩家，施加 1 级有害控制。从下一回合起持续 15 回合：实际选择基础闪或超闪时，在回合最开始流失 2 体力。重复施加刷新时长，不叠加流失量。',
 };
 const specialDescriptions = {
   ber: '互攻时克制刀。', knife: '真伤绕过普通挡伤盾；普通低点或等点仍可命中，但不能绕过 ber 克制、免疫或防法。', torch: '目标当回合出基础方盾时改为 2 伤害。',
@@ -21,18 +23,27 @@ const specialDescriptions = {
   phoenix: '攻击前获得 3 祝福值，不要求命中。', phoenixFlame: '主目标 2 伤害，左右存活邻居各溅射 1；去重且不伤自己，仅主目标穿泡级。',
   meteor: '每名以基础/等效防法防住的目标让自己另受一次 0.5 真伤。每次独立，不能合并用祝福减伤。',
   upheaval: '命中后尝试以 1 级控制将空中目标打落，影响后续攻击。', balance: '目标出基础大臂/攒/方盾/圆盾/闪/超闪分别伤害 1/0.5/1.5/2/2.5/3.5；任意非基础行动可防，但仍互攻。',
+  gun: '除实际选择基础闪或超闪外，其他任何行动都可防住。',
+  flyingKnife: '本回合只支付成本并锁定目标，下一回合攻击一次；届时可以另选一个新行动。',
+  cloudArrow: '连续穿透泡沫级盾；完整三层幽灵盾整面消失并挡住本次，残缺幽灵盾整面消失后继续穿透。',
+  punchKick: '连续穿透泡沫级盾；完整三层幽灵盾整面消失并挡住本次，残缺幽灵盾整面消失后继续穿透。',
+  arcLight: '参与互攻时点数高低关系反转，等点仍抵消；不改变伤害排序，也不反转特殊克制。',
+  hammer3: '最开始独立施加 2 级禁法，取消目标本回合新施放的普通法术及其招式资源收益，不依赖攻击命中。锤锤锤本身不被禁法取消，固有防护、旧状态、法术伤害和命中回调保留。',
+  ghostArrows: '消耗 2 个已积存的幽灵闪招式资源，不消耗基础资源或已有闪避状态。群体 2 法术伤害，穿泡级。',
+  ghostSword: '消耗 2 个幽灵闪招式资源；回合最开始自己流失 1 体力。基础攒或含法术效果的行动可防，单纯法术攻击不算含法术效果。',
+  ghostFinisher: '消耗 1 个幽灵闪和 1 个虚无闪招式资源。真伤，任何非基础行动可防；基础闪和超闪不能直接防住。',
 };
 function describe(m) {
   if (spellDescriptions[m.id]) return spellDescriptions[m.id];
   if (m.type === 'equipment') {
     const d = EQUIPMENT[m.id];
     return d.producer ? `对应基础动作总共获得 3 个${RESOURCE_NAMES[d.producer]}。每种生产器最多 1 件，生产器总共最多 2 件。`
-      : m.id === 'ghost' ? '消耗两面泡沫盾合成三层盾，每掉一层减少一盾位；穿泡级扣两层，穿尽继续承伤。'
+      : m.id === 'ghost' ? '消耗两面泡沫盾合成三层盾，每掉一层减少一盾位；通常穿泡级扣两层，穿云箭和拳打脚踢另按整盾穿透规则处理。'
       : d.immuneAll ? '免疫未明确无视或穿透雷达的攻击，可被小电移除。'
       : d.immuneResource ? `免疫成本含${RESOURCE_NAMES[d.immuneResource]}的攻击${d.immuneMove ? '，额外免疫凤之烈焰' : ''}；不匹配时可挡一次伤害并消失。四种元素盾合计最多 2 件。`
       : '抵挡一次普通伤害后消失，没有伤害溢出，真伤不能用普通盾挡住。';
   }
-  return [m.description, specialDescriptions[m.id], m.duration && '包含施放当回合，之后仍可正常出招；目标死亡则此持续效果消失。'].filter(Boolean).join(' ');
+  return [m.description, specialDescriptions[m.id], m.type === 'attack' && m.duration && '包含施放当回合，之后仍可正常出招；目标死亡则此持续效果消失。'].filter(Boolean).join(' ');
 }
 function cost(m) { return Object.entries(m.cost).map(([k, n]) => `${n} ${RESOURCE_NAMES[k]}`).join(' · ') || (m.id === 'ghost' ? '两面泡沫盾' : '免费'); }
 function avatar(seat = 0) {
@@ -69,6 +80,34 @@ function lobby() {
   return `<div class="page-heading"><div><span class="eyebrow">THE LOBBY</span><h1>下一场对决，等你入席 <span class="accent">✦</span></h1><p>你好，${esc(data.self.name)}。创建一个房间，或加入朋友的战场。</p></div></div><div class="lobby"><section class="room-grid">${data.rooms.length ? data.rooms.map(r => `<article class="room-card"><span class="status-pill">${r.phase === 'waiting' || r.phase === 'finished' ? '等待入席' : '正在对局'}</span><h2>${esc(r.name)}</h2><p class="room-id"># ${r.id}</p><footer><span>${r.count} / ${r.capacity} 人</span><button class="text-button accent" data-act="join" data-id="${r.id}" ${['selecting', 'choice', 'reveal'].includes(r.phase) || r.count >= r.capacity ? 'disabled' : ''}>加入房间 ↗</button></footer></article>`).join('') : '<div class="empty"><b>战场还很安静。</b><p>创建第一个房间，叫上朋友一起开始。</p><span class="accent">✦</span></div>'}</section><aside><section class="panel"><span class="eyebrow">YOUR ARENA</span><h2>创建房间</h2><form id="create"><input name="name" aria-label="房间名称" maxlength="20" placeholder="给房间起个名字" value="${esc(ui.roomName)}"><label>人数上限 <select name="capacity">${Array.from({ length: 9 }, (_, i) => i + 2).map(n => `<option ${n === ui.capacity ? 'selected' : ''}>${n}</option>`).join('')}</select></label><button class="primary-button">创建并进入 ↗</button></form></section><section class="panel"><h2>加入朋友</h2><form id="join"><input name="roomId" aria-label="房间号" maxlength="6" placeholder="输入 6 位房间号" required><button class="secondary-button">加入房间 →</button></form></section><button class="text-button" data-act="rules">查看完整招式手册 →</button></aside></div>`;
 }
 const nameOf = id => data.room.players.find(p => p.id === id)?.name || '玩家';
+function statuses(room, p) {
+  const grouped = new Map();
+  for (const e of p.effects.filter(e => e.end >= room.round)) {
+    const key = e.move || e.id, previous = grouped.get(key);
+    const status = { name: e.name || MOVES[e.move]?.name || (e.kind === 'defense' ? `${BASE_RESOURCE_NAMES[e.value]}防法` : '范围免疫'), start: e.start, end: e.end, positive: e.positive !== false };
+    if (previous) { previous.start = Math.min(previous.start, e.start); previous.end = Math.max(previous.end, e.end); }
+    else grouped.set(key, status);
+  }
+  return [...grouped.values()];
+}
+function statusBadges(room, p) {
+  return statuses(room, p).map(e => `<span class="status-effect ${e.positive ? 'positive' : 'negative'}" title="${esc(e.name)} · 第${e.start}～${e.end}回合">${esc(e.name)}${e.start > room.round ? ' · 待生效' : ' · ' + (e.end - room.round + 1)}</span>`).join('');
+}
+function stockEntries(p) { return Object.entries(RESOURCE_NAMES).filter(([id]) => !Object.hasOwn(BASE_RESOURCE_NAMES, id) && p.resources[id] > 0); }
+function showStock(id = data.self.id) {
+  const p = data.room.players.find(p => p.id === id);
+  show(`<h2>${esc(p.name)}的招式库存</h2><p class="fine">每次出招获得同名库存；禁法取消的新法术不获得库存。库存、实际护盾和持续状态分别保存。</p><div class="stock-list">${stockEntries(p).map(([key, name]) => `<div><b>${esc(name)}</b><span>× ${p.resources[key]}</span></div>`).join('') || '<p class="fine">尚未积存招式资源。</p>'}</div>`);
+}
+function basicMoveButton(m, me, basics, room) {
+  const cursed = 'SC'.includes(m.resource) && me.effects.some(e => e.kind === 'curse' && e.value === 'dodgeLifeLoss' && e.start <= room.round && e.end >= room.round);
+  const allowed = basics.includes(m);
+  const title = [!allowed && '连续闪避限制，本回合不可用', cursed && '钻心咒：选择后在回合最开始流失 2 点体力，无法免疫'].filter(Boolean).join('；');
+  return `<button class="basic-action ${ui.move === m.id ? 'selected' : ''} ${cursed ? 'cursed-dodge' : ''}" data-act="move" data-id="${m.id}" aria-pressed="${ui.move === m.id}" title="${esc(title)}" ${allowed ? '' : 'disabled'}>${esc(m.name)}<small>+${me.shields.some(s => EQUIPMENT[s.type].producer === m.resource) ? 3 : 1}</small></button>`;
+}
+function resultSummary(room) {
+  const lines = [...(room.result?.damage || []).map(d => `${esc(nameOf(d.target))} −${d.amount - d.blessing}`), ...(room.result?.lifeLoss || []).map(d => `${esc(nameOf(d.target))} 体力 −${d.amount}`)];
+  return lines.join(' · ') || '本回合无生命伤害或体力流失';
+}
 function seats(room) {
   const members = room.players.filter(p => !p.left), ownIndex = Math.max(0, members.findIndex(p => p.id === data.self.id));
   const revealed = room.actions || {};
@@ -77,12 +116,12 @@ function seats(room) {
     const m = MOVES[ui.move], canTarget = room.phase === 'selecting' && !room.ownAction && ['single', 'dual', 'splash'].includes(m?.target) && p.id !== data.self.id && p.hp > 0;
     const bubble = action ? `${MOVES[action.move]?.name || ''}${action.targets?.length ? ' → ' + action.targets.map(id => nameOf(id)).join('、') : ''}` : room.submitted.includes(p.id) ? '已锁定' : p.ready ? '已准备' : '';
     const effects = feedback.filter(f => f.playerId === p.id);
-    return `<button class="seat ${p.id === data.self.id ? 'mine' : ''} ${p.hp <= 0 ? 'dead' : ''} ${selected ? 'selected' : ''} ${canTarget ? 'targetable' : ''} ${effects.some(f => f.kind === 'damage') ? 'taking-damage' : ''}" data-act="seat" data-id="${p.id}" data-position="${(index - ownIndex + members.length) % members.length}" data-count="${members.length}" aria-label="${esc(p.name)}，${p.hp} 生命${canTarget ? '，选择目标' : ''}">${bubble ? `<span class="bubble">${esc(bubble)}</span>` : ''}${avatar(p.seat)}<strong>${p.seat + 1}. ${esc(p.name)}${p.id === data.self.id ? ' · 你' : ''}</strong><span class="vitals">♥ ${p.hp} / ${p.maxHp}${p.resources.Q ? ' · 祝 ' + p.resources.Q : ''}</span><span class="resources">${Object.entries(RESOURCE_NAMES).filter(([k]) => k !== 'Q').map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</span><span class="equipment-line">${p.shields.map(s => EQUIPMENT[s.type].name).join(' · ') || (p.connected ? '暂无装备' : '暂时离线')}</span>${effects.length ? `<span class="combat-feedback" role="status">${effects.map(f => `<span class="combat-fx ${f.kind}" data-feedback="${f.id}">${esc(f.text)}</span>`).join('')}</span>` : ''}</button>`;
+    return `<button class="seat ${p.id === data.self.id ? 'mine' : ''} ${(p.defeated ?? p.hp <= 0) ? 'dead' : ''} ${selected ? 'selected' : ''} ${canTarget ? 'targetable' : ''} ${effects.some(f => f.kind === 'damage') ? 'taking-damage' : ''}" data-act="seat" data-id="${p.id}" data-position="${(index - ownIndex + members.length) % members.length}" data-count="${members.length}" aria-label="${esc(p.name)}，${p.hp} 生命${canTarget ? '，选择目标' : ''}">${bubble ? `<span class="bubble">${esc(bubble)}</span>` : ''}${avatar(p.seat)}<strong>${p.seat + 1}. ${esc(p.name)}${p.id === data.self.id ? ' · 你' : ''}</strong><span class="vitals">♥ ${p.hp} / ${p.maxHp}${p.resources.Q ? ' · 祝 ' + p.resources.Q : ''}</span><span class="resources">${Object.entries(BASE_RESOURCE_NAMES).filter(([k]) => k !== 'Q').map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</span><span class="equipment-line">${p.shields.map(s => EQUIPMENT[s.type].name).join(' · ') || (p.connected ? '暂无装备' : '暂时离线')}</span><span class="seat-effects">${statusBadges(room, p)}</span>${effects.length ? `<span class="combat-feedback" role="status">${effects.map(f => `<span class="combat-fx ${f.kind}" data-feedback="${f.id}">${esc(f.text)}</span>`).join('')}</span>` : ''}</button>`;
   }).join('');
 }
 function detail(m) {
   if (!m) return '';
-  return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p>${esc(describe(m))}</p>${m.type === 'attack' ? `<div class="detail-stats"><span>${m.target === 'dual' ? '7.5 / 单目标15' : m.target === 'path' ? '3、4、5…' : m.power / 10} 点</span><span>${({ single: '单目标', all: '其他所有存活者', dual: '一至两个目标', splash: '主目标及存活邻居', path: '方向路径单体' })[m.target]}</span><span>${m.air ? '可对空' : '不对空'}</span><span>防法：${m.id === 'balance' ? '任意非基础行动' : m.id === 'sixFists' ? '防六拳合一及适用免疫' : [...m.guard].map(k => RESOURCE_NAMES[k]).join(' / ') || '无基础防法'}</span>${m.pierce?.length ? `<span>穿透：${m.pierce.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}${m.ignore?.length ? `<span>无视：${m.ignore.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}</div>` : ''}`;
+  return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p>${esc(describe(m))}</p>${m.type === 'attack' ? `<div class="detail-stats"><span>${m.target === 'dual' ? '7.5 / 单目标15' : m.target === 'path' ? '3、4、5…' : m.power / 10} 点</span><span>${({ single: '单目标', all: '其他所有存活者', dual: '一至两个目标', splash: '主目标及存活邻居', path: '方向路径单体' })[m.target]}</span><span>${m.air ? '可对空' : '不对空'}</span><span>防法：${m.guardRule === 'exceptDodgeAction' ? '除基础闪、超闪外的任意行动' : m.guardRule === 'ZOrSpell' ? '基础攒或含法术效果的行动' : m.guardRule === 'nonBasicAction' ? '任意非基础行动' : m.id === 'balance' ? '任意非基础行动' : m.id === 'sixFists' ? '防六拳合一及适用免疫' : [...m.guard].map(k => RESOURCE_NAMES[k]).join(' / ') || '无基础防法'}</span>${m.pierce?.length ? `<span>穿透：${m.pierce.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}${m.ignore?.length ? `<span>无视：${m.ignore.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}</div>` : ''}`;
 }
 function choicePanel(room) {
   const c = room.pending, mine = c.playerId === data.self.id;
@@ -94,14 +133,14 @@ function choicePanel(room) {
 function arsenal(room, me) {
   if (room.phase === 'choice') return choicePanel(room);
   if (['waiting', 'finished'].includes(room.phase)) return `<section class="panel ready-panel"><div><h2>${room.phase === 'finished' ? room.lastMatch?.winnerId ? `${esc(room.lastMatch.winnerName)} 获胜` : '全员阵亡 · 平局' : '等朋友入席'}</h2><p class="fine">至少两人、全员准备即可开局。每局从 5 生命和零资源重新开始。</p></div><button class="primary-button" data-act="ready">${me.ready ? '取消准备' : room.phase === 'finished' ? '准备下一局' : '准备开局'}</button></section>`;
-  if (room.phase === 'reveal') return `<section class="panel waiting"><h2>${room.result?.finished ? room.lastMatch?.winnerName ? `${esc(room.lastMatch.winnerName)} 获胜` : '平局' : '本回合结算完成'}</h2><p>${room.result?.damage?.length ? room.result.damage.map(d => `${esc(nameOf(d.target))} −${d.amount - d.blessing}`).join(' · ') : '本回合无人受伤'}</p><button class="text-button" data-act="history">查看战况记录 →</button></section>`;
+  if (room.phase === 'reveal') return `<section class="panel waiting"><h2>${room.result?.finished ? room.lastMatch?.winnerName ? `${esc(room.lastMatch.winnerName)} 获胜` : '平局' : '本回合结算完成'}</h2><p>${resultSummary(room)}</p><button class="text-button" data-act="history">查看战况记录 →</button></section>`;
   if (me.hp <= 0) return '<section class="panel waiting">你已阵亡，正在观战。持续攻击仍按规则生效。</section>';
   if (room.ownAction) return `<section class="panel waiting"><h2>已锁定 · ${esc(MOVES[room.ownAction.move].name)}</h2><p>其他玩家的选择在全员锁定后同时揭晓。</p></section>`;
   const allowed = legalMoves(room);
   if (!allowed.some(m => m.id === ui.move)) { ui.move = allowed[0].id; ui.targets = []; }
   const m = MOVES[ui.move], basics = allowed.filter(m => m.type === 'basic');
   const results = ui.search.trim() ? searchMoves(allowed.filter(m => m.type !== 'basic'), ui.search) : [];
-  return `<section class="arsenal"><div class="arsenal-heading"><h2>选择招式</h2><button class="text-button" data-act="all-moves">查看所有可出招式</button></div><div class="basic-actions">${Object.values(MOVES).filter(m => m.type === 'basic').map(m => `<button class="basic-action ${ui.move === m.id ? 'selected' : ''}" data-act="move" data-id="${m.id}" aria-pressed="${ui.move === m.id}" ${basics.includes(m) ? '' : 'disabled title="连续闪避限制，本回合不可用"'}>${esc(m.name)}<small>+${me.shields.some(s => EQUIPMENT[s.type].producer === m.resource) ? 3 : 1}</small></button>`).join('')}</div><div class="move-search-wrap"><input id="move-search" type="search" autocomplete="off" placeholder="搜招式：文字 / 拼音 / 首字母" value="${esc(ui.search)}" aria-label="搜索可出招式" aria-controls="move-results" aria-expanded="${!!ui.search.trim()}"><div id="move-results" class="move-results" ${ui.search.trim() ? '' : 'hidden'}>${results.length ? results.map(moveButton).join('') : '<p class="fine">没有匹配的可出招式，试试其他关键词或先积蓄资源。</p>'}</div></div><div class="selected-action"><b>${esc(m.name)}</b><span>${esc(cost(m))}</span><button class="text-button" data-act="move-detail" data-id="${m.id}" aria-label="查看${esc(m.name)}说明">说明</button></div>${m.target === 'path' ? `<div class="direction"><button class="secondary-button small" data-act="direction" data-id="clockwise" aria-pressed="${ui.direction === 'clockwise'}">${ui.direction === 'clockwise' ? '✓ ' : ''}顺时针</button><button class="secondary-button small" data-act="direction" data-id="counterclockwise" aria-pressed="${ui.direction === 'counterclockwise'}">${ui.direction === 'counterclockwise' ? '✓ ' : ''}逆时针</button></div>` : ''}<div class="lock-row"><span class="target-hint">${m.target === 'dual' ? '点头像选 1～2 人' : ['single', 'splash'].includes(m.target) ? '点头像选择目标' : m.target === 'path' ? '按所选方向分配点数' : '无需指定目标'}${ui.targets.length ? ' · ' + ui.targets.map(id => esc(nameOf(id))).join('、') : ''}</span><button class="primary-button" data-act="lock" ${busy ? 'disabled' : ''}>锁定 · ${esc(m.name)} ↗</button></div></section>`;
+  return `<section class="arsenal"><div class="arsenal-heading"><h2>选择招式</h2><button class="text-button" data-act="all-moves">查看所有可出招式</button></div><div class="basic-actions">${Object.values(MOVES).filter(m => m.type === 'basic').map(m => basicMoveButton(m, me, basics, room)).join('')}</div><div class="move-search-wrap"><input id="move-search" type="search" autocomplete="off" placeholder="搜招式：文字 / 拼音 / 首字母" value="${esc(ui.search)}" aria-label="搜索可出招式" aria-controls="move-results" aria-expanded="${!!ui.search.trim()}"><div id="move-results" class="move-results" ${ui.search.trim() ? '' : 'hidden'}>${results.length ? results.map(moveButton).join('') : '<p class="fine">没有匹配的可出招式，试试其他关键词或先积蓄资源。</p>'}</div></div><div class="selected-action"><b>${esc(m.name)}</b><span>${esc(cost(m))}</span><button class="text-button" data-act="move-detail" data-id="${m.id}" aria-label="查看${esc(m.name)}说明">说明</button></div>${m.target === 'path' ? `<div class="direction"><button class="secondary-button small" data-act="direction" data-id="clockwise" aria-pressed="${ui.direction === 'clockwise'}">${ui.direction === 'clockwise' ? '✓ ' : ''}顺时针</button><button class="secondary-button small" data-act="direction" data-id="counterclockwise" aria-pressed="${ui.direction === 'counterclockwise'}">${ui.direction === 'counterclockwise' ? '✓ ' : ''}逆时针</button></div>` : ''}<div class="lock-row"><span class="target-hint">${m.target === 'dual' ? '点头像选 1～2 人' : ['single', 'splash'].includes(m.target) ? '点头像选择目标' : m.target === 'path' ? '按所选方向分配点数' : '无需指定目标'}${ui.targets.length ? ' · ' + ui.targets.map(id => esc(nameOf(id))).join('、') : ''}</span><button class="primary-button" data-act="lock" ${busy ? 'disabled' : ''}>锁定 · ${esc(m.name)} ↗</button></div></section>`;
 }
 function legalMoves(room) { return availableMoves({ players: room.players, round: room.round }, data.self.id); }
 function moveButton(m) { return `<button class="move-result ${ui.move === m.id ? 'selected' : ''}" data-act="move" data-id="${m.id}"><b>${esc(m.name)}</b><small>${esc(cost(m))}</small></button>`; }
@@ -136,9 +175,9 @@ function updateBlessingControls() {
   form.querySelector('[type=submit],button.primary-button').disabled = !valid || busy;
 }
 function roomPage(room) {
-  const me = room.players.find(p => p.id === data.self.id), active = room.players.filter(p => !p.left), living = active.filter(p => p.hp > 0);
+  const me = room.players.find(p => p.id === data.self.id), active = room.players.filter(p => !p.left), living = active.filter(p => !(p.defeated ?? p.hp <= 0));
   const title = room.phase === 'selecting' ? room.ownAction ? '已锁定，等待亮招' : '秘密选择，同时亮招' : room.phase === 'choice' ? '完成回合中的选择' : room.phase === 'reveal' ? '同时亮招 · 结算结果' : room.phase === 'finished' ? '本局结束' : '集结，准备开局';
-  return `<div class="room-toolbar"><div class="room-title"><small>ROOM / ${room.id}</small><h1>${esc(room.name)}</h1></div><div class="toolbar-actions"><button class="secondary-button small" data-act="invite">邀请朋友 ↗</button><button class="text-button" data-act="leave">退出房间</button></div></div><div class="battle-layout"><section class="arena-wrap"><div class="arena-corner"><button class="text-button" data-act="scores">胜场榜</button><button class="text-button" data-act="history">战况记录</button><button class="text-button" data-act="rules">招式手册</button></div><div class="arena ${active.length > 6 ? 'many-players' : ''}"><div class="arena-circle"></div><div class="arena-center"><span class="eyebrow">${room.round ? 'ROUND ' + String(room.round).padStart(2, '0') : 'BIGARM ARENA'}</span><div class="symbol">✦</div><h2>${title}</h2><p>${room.phase === 'selecting' ? `${room.submitted.length} / ${living.length} 已锁定` : `${active.length} / ${room.capacity} 人 · ${living.length} 人存活`}</p><div class="clock" data-countdown></div></div>${seats(room)}</div><div class="mobile-status">你的资源：${Object.entries(RESOURCE_NAMES).map(([k, name]) => `${name} ${me.resources[k]}`).join(' · ')}</div></section><aside class="command-panel">${arsenal(room, me)}</aside></div>`;
+  return `<div class="room-toolbar"><div class="room-title"><small>ROOM / ${room.id}</small><h1>${esc(room.name)}</h1></div><div class="toolbar-actions"><button class="secondary-button small" data-act="invite">邀请朋友 ↗</button><button class="text-button" data-act="leave">退出房间</button></div></div><div class="battle-layout"><section class="arena-wrap"><div class="arena-corner"><button class="text-button" data-act="scores">胜场榜</button><button class="text-button" data-act="history">战况记录</button><button class="text-button" data-act="rules">招式手册</button></div><div class="arena ${active.length > 6 ? 'many-players' : ''}"><div class="arena-circle"></div><div class="arena-center"><span class="eyebrow">${room.round ? 'ROUND ' + String(room.round).padStart(2, '0') : 'BIGARM ARENA'}</span><div class="symbol">✦</div><h2>${title}</h2><p>${room.phase === 'selecting' ? `${room.submitted.length} / ${living.length} 已锁定` : `${active.length} / ${room.capacity} 人 · ${living.length} 人存活`}</p><div class="clock" data-countdown></div></div>${seats(room)}</div><div class="mobile-status">你的资源：${Object.entries(BASE_RESOURCE_NAMES).map(([k, name]) => `${name} ${me.resources[k]}`).join(' · ')}<button class="text-button" data-act="stock">招式库存 ${stockEntries(me).reduce((sum, [key]) => sum + me.resources[key], 0)}</button><div class="own-effects">${statusBadges(room, me)}</div></div></section><aside class="command-panel">${arsenal(room, me)}</aside></div>`;
 }
 function positionSeats() {
   const arena = $('.arena'); if (!arena) return;
@@ -181,7 +220,7 @@ function showRules(query = '') {
 }
 function showPlayer(id) {
   const p = data.room.players.find(p => p.id === id);
-  show(`<h2>${esc(p.name)}</h2><div class="detail-stats">${Object.entries(RESOURCE_NAMES).map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</div><p>生命 ${p.hp} / ${p.maxHp}${p.airborne ? ' · 在空中' : ''}</p><div class="equipment-detail">${p.shields.map(s => `<p>${esc(EQUIPMENT[s.type].name)}${s.type === 'ghost' ? ` · ${s.layers} 层` : ''}</p>`).join('') || '暂无装备'}</div><p class="fine">${p.effects.map(e => `${e.kind === 'defense' ? RESOURCE_NAMES[e.value] + '防法' : '单体范围免疫'} · 至第 ${e.end} 回合`).join('<br>') || '没有持续防御'}</p>`);
+  show(`<h2>${esc(p.name)}</h2><div class="detail-stats">${Object.entries(BASE_RESOURCE_NAMES).map(([k, name]) => `<span>${esc(name)} ${p.resources[k]}</span>`).join('')}</div><p>生命 ${p.hp} / ${p.maxHp}${p.airborne ? ' · 在空中' : ''}</p><div class="equipment-detail">${p.shields.map(s => `<p>${esc(EQUIPMENT[s.type].name)}${s.type === 'ghost' ? ` · ${s.layers} 层` : ''}</p>`).join('') || '暂无装备'}</div><div class="player-effects">${statusBadges(data.room, p) || '<p class="fine">没有持续状态</p>'}</div><h3>招式库存</h3><div class="detail-stats">${stockEntries(p).map(([key, name]) => `<span>${esc(name)} × ${p.resources[key]}</span>`).join('') || '<p class="fine">暂无招式库存</p>'}</div>`);
 }
 async function perform(action) {
   if (busy) return; busy = true;
@@ -199,6 +238,7 @@ document.addEventListener('click', event => {
   const button = event.target.closest('[data-act]'); if (!button || button.disabled) return;
   const { act, id } = button.dataset, room = data?.room;
   if (act === 'rules') return showRules();
+  if (act === 'stock') return showStock();
   if (act === 'join') return perform(() => api('/api/rooms/join', { roomId: id }));
   if (act === 'ready') return perform(() => api('/api/rooms/ready', {}));
   if (act === 'leave') return perform(() => api('/api/rooms/leave', {}));

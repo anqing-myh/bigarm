@@ -17,7 +17,7 @@ const server = createServer({ selectionMs: 120000, choiceMs: 120000, revealMs: 1
 server.listen(0, '127.0.0.1'); await once(server, 'listening');
 const base = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true, ...(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH } : process.platform === 'win32' ? { channel: 'msedge' } : {}) });
-const errors = [], contexts = [];
+const errors = [], contexts = [], extraServers = [];
 await mkdir('test-results', { recursive: true });
 async function page(width = 1360) {
   const c = await browser.newContext({ viewport: { width, height: 950 } }); contexts.push(c);
@@ -174,10 +174,69 @@ try {
   await blessed.locator('#blessing .primary-button').click();
   const result = await waitInfo(blessed, s => s.room.phase !== 'choice');
   assert.equal(result.room.players.find(p => p.id === result.self.id).hp, 2);
+
+  // A fast separate room earns actual spell stock and applies a real delayed curse.
+  const v2Server = createServer({ selectionMs: 120000, choiceMs: 120000, revealMs: 30 }); extraServers.push(v2Server);
+  v2Server.listen(0, '127.0.0.1'); await once(v2Server, 'listening');
+  const v2Base = `http://127.0.0.1:${v2Server.address().port}`;
+  const v2 = await page(390); await v2.setViewportSize({ width: 390, height: 844 }); await login(v2, '新版测试', v2Base);
+  await v2.locator('#create [name=capacity]').selectOption('3'); await v2.locator('#create button').click();
+  await v2.locator('[data-act=ready]').waitFor();
+  const actors = await v2.evaluate(async () => {
+    const own = sessionStorage.getItem('bigarm-token');
+    const post = async (url, body, token) => { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
+    const get = async () => (await fetch('/api/state', { headers: { Authorization: `Bearer ${own}` } })).json();
+    const initial = await get(), bots = [];
+    for (const name of ['咒术玩家', '旁观战斗']) { const p = await post('/api/session', { name }); bots.push(p.token); await post('/api/rooms/join', { roomId: initial.room.id }, p.token); }
+    for (const token of [own, ...bots]) await post('/api/rooms/ready', {}, token);
+    async function round(moves) {
+      const s = await get();
+      for (const [i, token] of [own, ...bots].entries()) await post('/api/game/action', { round: s.room.round, move: moves[i], target: initial.self.id }, token);
+      for (let i = 0; i < 200; i++) { const next = await get(); if (next.room.phase === 'selecting' && next.room.round > s.room.round) return; await new Promise(r => setTimeout(r, 10)); }
+      throw new Error('v2 fixture did not advance');
+    }
+    const charges = ['basicB', 'basicF', 'basicY', 'basicC', 'basicB', 'basicF', 'basicY', 'basicC', 'basicS', 'basicB'];
+    for (const [i, move] of charges.entries()) await round([move, i % 2 === 0 ? 'basicC' : i === 1 ? 'basicF' : i === 3 ? 'basicY' : 'basicB', 'basicB']);
+    await round(['ghostDodge', 'crucio', 'basicB']);
+    return { own, bots, ownId: initial.self.id };
+  });
+  await v2.locator('.own-effects .negative').waitFor();
+  assert.ok((await v2.locator('.own-effects').innerText()).includes('钻心咒'));
+  assert.ok((await v2.locator('.own-effects').innerText()).includes('幽灵闪'));
+  assert.ok(await v2.locator('[data-id=basicS]').evaluate(e => e.classList.contains('cursed-dodge')));
+  assert.ok(await v2.locator('[data-id=basicC]').evaluate(e => e.classList.contains('cursed-dodge')));
+  await battlefieldFits(v2); await v2.screenshot({ path: 'test-results/v2-status-mobile.png', fullPage: true });
+  const postV2 = async (move, token, round) => {
+    const r = await fetch(`${v2Base}/api/game/action`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ move, round, target: actors.ownId }) });
+    assert.equal(r.status, 200, await r.text());
+  };
+  await move(v2, 'ghostDodge');
+  for (const token of actors.bots) await postV2('basicB', token, 12);
+  await waitInfo(v2, s => s.room.round === 13 && s.room.phase === 'selecting');
+  await v2.locator('[data-act=lock]').waitFor(); await v2.locator('[data-act=stock]').click();
+  assert.ok((await v2.locator('.stock-list').innerText()).includes('幽灵闪'));
+  assert.ok((await v2.locator('.stock-list').innerText()).includes('× 2'));
+  await v2.screenshot({ path: 'test-results/v2-stock-mobile.png', fullPage: true }); await v2.locator('#close-modal').click();
+  await v2.locator('#move-search').fill('ylwjqf'); await v2.locator('#move-results [data-id=ghostArrows]').click(); await v2.locator('[data-act=lock]').click();
+  for (const token of actors.bots) await postV2('basicB', token, 13);
+  let next = await waitInfo(v2, s => s.room.round === 14 && s.room.phase === 'selecting');
+  assert.equal(next.room.players.find(p => p.id === next.self.id).resources.ghostDodge, 0);
+  assert.equal(next.room.players.find(p => p.id === next.self.id).resources.ghostArrows, 1);
+  await v2.locator('[data-act=lock]').waitFor(); await v2.locator('#move-search').fill('ylwjqf');
+  assert.equal(await v2.locator('#move-results [data-id=ghostArrows]').count(), 0, 'spent stock disappears from legal search');
+  await v2.locator('#move-search').fill(''); await move(v2, 'basicS');
+  await postV2('hammer3', actors.bots[0], 14); await postV2('basicB', actors.bots[1], 14);
+  next = await waitInfo(v2, s => s.room.round === 15 && s.room.phase === 'selecting');
+  assert.equal(next.room.players.find(p => p.id === next.self.id).hp, 3);
+  assert.equal(next.room.history[0].lifeLoss[0].amount, 2);
+  assert.equal(next.room.history[0].damage.length, 0, 'curse life loss is not a damage event');
+  await v2.setViewportSize({ width: 1360, height: 950 }); await battlefieldFits(v2);
+  await v2.screenshot({ path: 'test-results/v2-result-desktop.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('PASS: room lifecycle, hidden locks, Chinese/pinyin/initial search, legal move picker, same-screen desktop/mobile/ten-player layout, health/shield feedback, real per-hit blessing shortcuts/input/shared budget, history, forfeit, scores and invite.');
+  console.log('PASS: room lifecycle, hidden locks, legal/pinyin search, desktop/mobile layouts, shield feedback, blessing budgets, V2 named statuses/red dodge warning, earned/consumed move stock, curse life loss, history and scores.');
 } finally {
   for (const c of contexts) await c.close();
   await browser.close();
+  for (const extra of extraServers) await new Promise(resolve => { extra.close(resolve); extra.closeAllConnections(); });
   await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
 }

@@ -1,0 +1,4151 @@
+# 大臂招式清单：is_spell 是供人工审阅的法术分类。
+# 本表不随启动/测试自动覆盖；新增机制和招式须同步维护。
+schema_version: 2
+rule_version: "2026-11-24"
+scope: "当前全部启用招式，新增或修改招式时一并维护；原始 v2-招式.md 保留供以后补充"
+editing: "可直接修改、批注本表供后续调整。游戏当前读取 rules/catalog.js；修改本表后须同步代码。启动和测试不会自动覆盖本文件。"
+classification:
+  is_spell: "行动是否含法术效果，用于“Z或法术防”；与 attack.attribute=magic 不同。当前火轮、天翻地覆的命中附带效果列为法术，等待人工审阅时可修改。"
+  spell_cancellation: "锤锤锤只取消本回合新施放的普通独立法术及其招式库存收益；固有防护、旧状态、攻击伤害和命中回调保留。"
+  actual_cost_membership: "元素盾和刀点刀检查实际库存成本键，不把计算资源价值时的递归展开另算作实际 B/Z/F/Y/S/C 成本。"
+  basic_resource_aliases:
+    B: "大臂"
+    Z: "攒"
+    F: "方盾"
+    Y: "圆盾"
+    S: "闪"
+    C: "超闪"
+    Q: "祝福值"
+  recurring_status_start_offset: 1
+resources:
+  B:
+    name: "大臂"
+    value_points: 1
+    storage: "base_inventory"
+    real_shield: false
+  Z:
+    name: "攒"
+    value_points: 0.8
+    storage: "base_inventory"
+    real_shield: false
+  F:
+    name: "方盾"
+    value_points: 1.5
+    storage: "base_inventory"
+    real_shield: false
+  Y:
+    name: "圆盾"
+    value_points: 2
+    storage: "base_inventory"
+    real_shield: false
+  S:
+    name: "闪"
+    value_points: 2.5
+    storage: "base_inventory"
+    real_shield: false
+  C:
+    name: "超闪"
+    value_points: 3.5
+    storage: "base_inventory"
+    real_shield: false
+  Q:
+    name: "祝福值"
+    value_points: 4.5
+    storage: "base_inventory"
+    real_shield: false
+  punch:
+    name: "拳"
+    value_points: 1
+    storage: "move_inventory"
+    real_shield: false
+  kick:
+    name: "踹"
+    value_points: 1
+    storage: "move_inventory"
+    real_shield: false
+  ber:
+    name: "ber"
+    value_points: 0.8
+    storage: "move_inventory"
+    real_shield: false
+  knife:
+    name: "刀"
+    value_points: 3.5
+    storage: "move_inventory"
+    real_shield: false
+  wave:
+    name: "海浪"
+    value_points: 3
+    storage: "move_inventory"
+    real_shield: false
+  torch:
+    name: "火炬"
+    value_points: 2
+    storage: "move_inventory"
+    real_shield: false
+  tsunami:
+    name: "海啸"
+    value_points: 4.5
+    storage: "move_inventory"
+    real_shield: false
+  fireWheel:
+    name: "火轮"
+    value_points: 4
+    storage: "move_inventory"
+    real_shield: false
+  arrows:
+    name: "万箭齐发"
+    value_points: 5
+    storage: "move_inventory"
+    real_shield: false
+  smallWave:
+    name: "小海波"
+    value_points: 1.5
+    storage: "move_inventory"
+    real_shield: false
+  dart:
+    name: "镖"
+    value_points: 1.5
+    storage: "move_inventory"
+    real_shield: false
+  smallWheel:
+    name: "小火轮"
+    value_points: 2
+    storage: "move_inventory"
+    real_shield: false
+  quake:
+    name: "地震"
+    value_points: 7.5
+    storage: "move_inventory"
+    real_shield: false
+  tripleKick:
+    name: "三连踹"
+    value_points: 3.5
+    storage: "move_inventory"
+    real_shield: false
+  sunPunch:
+    name: "太阳拳"
+    value_points: 4
+    storage: "move_inventory"
+    real_shield: false
+  comboPunch:
+    name: "连环拳"
+    value_points: 5
+    storage: "move_inventory"
+    real_shield: false
+  dragonSword:
+    name: "青龙剑"
+    value_points: 7
+    storage: "move_inventory"
+    real_shield: false
+  knifePoint:
+    name: "刀点刀"
+    value_points: 7.5
+    storage: "move_inventory"
+    real_shield: false
+  sickle:
+    name: "镰刀"
+    value_points: 1.6
+    storage: "move_inventory"
+    real_shield: false
+  sixFists:
+    name: "六拳合一"
+    value_points: 14
+    storage: "move_inventory"
+    real_shield: false
+  boomerang:
+    name: "回旋镖"
+    value_points: 3
+    storage: "move_inventory"
+    real_shield: false
+  skyCannon:
+    name: "冲天炮"
+    value_points: 5.3
+    storage: "move_inventory"
+    real_shield: false
+  skyDrill:
+    name: "冲天钻"
+    value_points: 4.3
+    storage: "move_inventory"
+    real_shield: false
+  dragonBlade:
+    name: "青龙偃月刀"
+    value_points: 10.5
+    storage: "move_inventory"
+    real_shield: false
+  phoenix:
+    name: "凤鸣九天"
+    value_points: 20
+    storage: "move_inventory"
+    real_shield: false
+  phoenixFlame:
+    name: "凤之烈焰"
+    value_points: 9
+    storage: "move_inventory"
+    real_shield: false
+  phoenixStar:
+    name: "凤之长星"
+    value_points: 9
+    storage: "move_inventory"
+    real_shield: false
+  meteor:
+    name: "流星锤"
+    value_points: 7.5
+    storage: "move_inventory"
+    real_shield: false
+  staff:
+    name: "少林棍"
+    value_points: 10
+    storage: "move_inventory"
+    real_shield: false
+  sword:
+    name: "剑"
+    value_points: 2
+    storage: "move_inventory"
+    real_shield: false
+  upheaval:
+    name: "天翻地覆"
+    value_points: 11.3
+    storage: "move_inventory"
+    real_shield: false
+  balance:
+    name: "均衡之刃"
+    value_points: 11.3
+    storage: "move_inventory"
+    real_shield: false
+  gun:
+    name: "枪"
+    value_points: 0.8
+    storage: "move_inventory"
+    real_shield: false
+  flyingKnife:
+    name: "飞刀"
+    value_points: 2.5
+    storage: "move_inventory"
+    real_shield: false
+  cloudArrow:
+    name: "穿云箭"
+    value_points: 5.5
+    storage: "move_inventory"
+    real_shield: false
+  punchKick:
+    name: "拳打脚踢"
+    value_points: 6.5
+    storage: "move_inventory"
+    real_shield: false
+  arcLight:
+    name: "弧光"
+    value_points: 6.5
+    storage: "move_inventory"
+    real_shield: false
+  hammer3:
+    name: "锤锤锤"
+    value_points: 4.5
+    storage: "move_inventory"
+    real_shield: false
+  ghostArrows:
+    name: "幽灵万箭齐发"
+    value_points: 16
+    storage: "move_inventory"
+    real_shield: false
+  ghostSword:
+    name: "幽灵毁灭之剑"
+    value_points: 16
+    storage: "move_inventory"
+    real_shield: false
+  ghostFinisher:
+    name: "幽灵必杀"
+    value_points: 17.5
+    storage: "move_inventory"
+    real_shield: false
+  foam:
+    name: "泡沫盾"
+    value_points: 2.5
+    storage: "move_inventory"
+    real_shield: false
+  ghost:
+    name: "幽灵盾"
+    value_points: 5
+    storage: "move_inventory"
+    real_shield: false
+  lightning:
+    name: "闪电盾"
+    value_points: 8.5
+    storage: "move_inventory"
+    real_shield: false
+  thunder:
+    name: "雷电盾"
+    value_points: 11.5
+    storage: "move_inventory"
+    real_shield: false
+  ocean:
+    name: "海神盾"
+    value_points: 6.9
+    storage: "move_inventory"
+    real_shield: false
+  flame:
+    name: "烈焰盾"
+    value_points: 9
+    storage: "move_inventory"
+    real_shield: false
+  producerB:
+    name: "大臂生产器"
+    value_points: 5
+    storage: "move_inventory"
+    real_shield: false
+  producerZ:
+    name: "攒攒生产器"
+    value_points: 4
+    storage: "move_inventory"
+    real_shield: false
+  producerF:
+    name: "方盾生产器"
+    value_points: 7.5
+    storage: "move_inventory"
+    real_shield: false
+  producerY:
+    name: "圆盾生产器"
+    value_points: 10
+    storage: "move_inventory"
+    real_shield: false
+  radar:
+    name: "雷达"
+    value_points: 8.4
+    storage: "move_inventory"
+    real_shield: false
+  shock:
+    name: "小电"
+    value_points: 7
+    storage: "move_inventory"
+    real_shield: false
+  phoenixGuard:
+    name: "凤之守护"
+    value_points: 4.5
+    storage: "move_inventory"
+    real_shield: false
+  ghostDodge:
+    name: "幽灵闪"
+    value_points: 8
+    storage: "move_inventory"
+    real_shield: false
+  chainDodge:
+    name: "连环闪"
+    value_points: 8.5
+    storage: "move_inventory"
+    real_shield: false
+  voidDodge:
+    name: "虚无闪"
+    value_points: 9.5
+    storage: "move_inventory"
+    real_shield: false
+  thunderDodge:
+    name: "雷闪"
+    value_points: 10.5
+    storage: "move_inventory"
+    real_shield: false
+  heal:
+    name: "回一滴血"
+    value_points: 10.5
+    storage: "move_inventory"
+    real_shield: false
+  guardSix:
+    name: "防六拳合一"
+    value_points: 0
+    storage: "move_inventory"
+    real_shield: false
+  axi:
+    name: "阿西吧"
+    value_points: 3.5
+    storage: "move_inventory"
+    real_shield: false
+  crucio:
+    name: "钻心咒"
+    value_points: 17.5
+    storage: "move_inventory"
+    real_shield: false
+moves:
+  basicB:
+    name: "大臂"
+    category: "basic"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "B"
+      amount: 1
+      producer_total: 3
+      stage: "R1b"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: "B"
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "获得 1 个大臂，提供本回合对应防法。"
+  basicZ:
+    name: "攒"
+    category: "basic"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "Z"
+      amount: 1
+      producer_total: 3
+      stage: "R1b"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 0.8
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: "Z"
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "获得 1 个攒，提供本回合对应防法。"
+  basicF:
+    name: "方盾"
+    category: "basic"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "F"
+      amount: 1
+      producer_total: 3
+      stage: "R1b"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: "F"
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "获得 1 个方盾，提供本回合对应防法。"
+  basicY:
+    name: "圆盾"
+    category: "basic"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "Y"
+      amount: 1
+      producer_total: 3
+      stage: "R1b"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: "Y"
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "获得 1 个圆盾，提供本回合对应防法。"
+  basicS:
+    name: "闪"
+    category: "basic"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "S"
+      amount: 1
+      producer_total: null
+      stage: "R1b"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: "S"
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "获得 1 个闪，提供本回合对应防法。"
+  basicC:
+    name: "超闪"
+    category: "basic"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "C"
+      amount: 1
+      producer_total: null
+      stage: "R1b"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 3.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: "C"
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "获得 1 个超闪，提供本回合对应防法。"
+  punch:
+    name: "拳"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+      real_shields: {}
+    stock_gain:
+      resource: "punch"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 1
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "F"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 1 点 · 1 伤害"
+  kick:
+    name: "踹"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+      real_shields: {}
+    stock_gain:
+      resource: "kick"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 6
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "F"
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 6 点 · 1 伤害"
+  ber:
+    name: "ber"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        Z: 1
+      real_shields: {}
+    stock_gain:
+      resource: "ber"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 0.8
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 0.8
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "B"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: "beats_knife"
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 0.8 点 · 1 伤害"
+  knife:
+    name: "刀"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 1
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "knife"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 3.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 3.5
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: true
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: true
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 3.5 点 · 0.5 伤害"
+  wave:
+    name: "海浪"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 2
+      real_shields: {}
+    stock_gain:
+      resource: "wave"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 3
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 3
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 3 点 · 1 伤害"
+  torch:
+    name: "火炬"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "torch"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 2
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "torch"
+      conditional_damage:
+        target_actual_basic_F: 2
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 2 点 · 1 伤害"
+  tsunami:
+    name: "海啸"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 3
+      real_shields: {}
+    stock_gain:
+      resource: "tsunami"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4.5
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 4.5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 4.5 点 · 1 伤害"
+  fireWheel:
+    name: "火轮"
+    category: "attack"
+    is_spell: true
+    spell_classification_note: "攻击带有命中附带效果；此处将其列为含法术效果，供人工复核"
+    cost:
+      inventory:
+        Y: 2
+      real_shields: {}
+    stock_gain:
+      resource: "fireWheel"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 4
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: "S"
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit:
+      effect: "gain_resource"
+      resource: "Y"
+      amount: 1
+      once_per_segment: true
+      shield_hit_counts: true
+      amplified_by_producer: false
+      cancelled_by_hammer: false
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 4 点 · 0.5＋0.5 伤害"
+  arrows:
+    name: "万箭齐发"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        S: 2
+      real_shields: {}
+    stock_gain:
+      resource: "arrows"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "F"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 5 点 · 1＋0.5 伤害"
+  smallWave:
+    name: "小海波"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 1
+      real_shields: {}
+    stock_gain:
+      resource: "smallWave"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1.5
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 1.5
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "F"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 1.5 点 · 0.5 伤害"
+  dart:
+    name: "镖"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 1
+      real_shields: {}
+    stock_gain:
+      resource: "dart"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 1.5
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 1.5 点 · 0.5 伤害"
+  smallWheel:
+    name: "小火轮"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "smallWheel"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 2
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 2 点 · 0.5 伤害"
+  quake:
+    name: "地震"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        S: 3
+      real_shields: {}
+    stock_gain:
+      resource: "quake"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7.5
+    target: "dual"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 7.5
+      power_rule: "one_target_15_else_7.5"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+          - "electric"
+          - "radar"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 7.5 点 · 1 伤害"
+  tripleKick:
+    name: "三连踹"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 2
+        F: 1
+      real_shields: {}
+    stock_gain:
+      resource: "tripleKick"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 3.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 3.5
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "F"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 3.5 点 · 2 伤害"
+  sunPunch:
+    name: "太阳拳"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        B: 2
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "sunPunch"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 4
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 4 点 · 1 伤害"
+  comboPunch:
+    name: "连环拳"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 5
+      real_shields: {}
+    stock_gain:
+      resource: "comboPunch"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 5
+      power_rule: "fixed"
+      damage_segments:
+        - 3
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 5 点 · 3 伤害"
+  dragonSword:
+    name: "青龙剑"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 2
+        Y: 2
+      real_shields: {}
+    stock_gain:
+      resource: "dragonSword"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 7
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 7 点 · 2 伤害"
+  knifePoint:
+    name: "刀点刀"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        F: 3
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "knifePoint"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 7.5
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses: []
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: "ingredientB"
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 7.5 点 · 2 伤害"
+  sickle:
+    name: "镰刀"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Z: 2
+      real_shields: {}
+    stock_gain:
+      resource: "sickle"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 1.6
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 1.6
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "B"
+          - "Z"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 1.6 点 · 0.5＋0.5 伤害"
+  sixFists:
+    name: "六拳合一"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 4
+        Y: 4
+      real_shields: {}
+    stock_gain:
+      resource: "sixFists"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 14
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 1
+      control_immunity_level: 1
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 14
+      power_rule: "fixed"
+      damage_segments:
+        - 7
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses: []
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: "guardSix"
+      shield_interaction:
+        true_damage: false
+        ignore:
+          - "foam"
+          - "radar"
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 14 点 · 7 伤害"
+  boomerang:
+    name: "回旋镖"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 3
+      real_shields: {}
+    stock_gain:
+      resource: "boomerang"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 3
+    target: "path"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 3
+      power_rule: "3_plus_zero_based_path_index"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 3 点 · 1 伤害"
+  skyCannon:
+    name: "冲天炮"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        Z: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "skyCannon"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5.3
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 5.3
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 3
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 5.3 点 · 1 伤害 · 持续 3 回合"
+  skyDrill:
+    name: "冲天钻"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        Z: 1
+        S: 1
+      real_shields: {}
+    stock_gain:
+      resource: "skyDrill"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4.3
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 4.3
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 4
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 4.3 点 · 0.5 伤害 · 持续 4 回合"
+  dragonBlade:
+    name: "青龙偃月刀"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 3
+        Y: 3
+      real_shields: {}
+    stock_gain:
+      resource: "dragonBlade"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 10.5
+      power_rule: "fixed"
+      damage_segments:
+        - 3
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "F"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 10.5 点 · 3 伤害"
+  phoenix:
+    name: "凤鸣九天"
+    category: "attack"
+    is_spell: true
+    spell_classification_note: "攻击带有独立法术组件"
+    cost:
+      inventory:
+        B: 1
+        F: 2
+        Y: 2
+        S: 2
+        C: 2
+      real_shields: {}
+    stock_gain:
+      resource: "phoenix"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 20
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 20
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "gain_resource"
+        target: "self"
+        resource: "Q"
+        amount: 3
+        requires_hit: false
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 20 点 · 2 伤害"
+  phoenixFlame:
+    name: "凤之烈焰"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        Q: 2
+      real_shields: {}
+    stock_gain:
+      resource: "phoenixFlame"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 9
+    target: "splash"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 9
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage:
+        primary: 2
+        neighbors: 1
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 9 点 · 2 伤害"
+  phoenixStar:
+    name: "凤之长星"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        Q: 2
+      real_shields: {}
+    stock_gain:
+      resource: "phoenixStar"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 9
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 9
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "electric"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 5
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 9 点 · 1 伤害 · 持续 5 回合"
+  meteor:
+    name: "流星锤"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 5
+      real_shields: {}
+    stock_gain:
+      resource: "meteor"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7.5
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 7.5
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block:
+      target: "self"
+      per_target_damage: 0.5
+      true_damage: true
+      skip_if_intrinsic_damage_immunity_level_at_least: 1
+      merge_events: false
+    equipment: null
+    description: "物理攻击 · 7.5 点 · 2 伤害"
+  staff:
+    name: "少林棍"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Y: 5
+      real_shields: {}
+    stock_gain:
+      resource: "staff"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 10
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore:
+          - "electric"
+          - "radar"
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 10 点 · 2 伤害"
+  sword:
+    name: "剑"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 2
+      real_shields: {}
+    stock_gain:
+      resource: "sword"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 2
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "F"
+          - "Y"
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 2 点 · 2 伤害"
+  upheaval:
+    name: "天翻地覆"
+    category: "attack"
+    is_spell: true
+    spell_classification_note: "攻击带有命中附带效果；此处将其列为含法术效果，供人工复核"
+    cost:
+      inventory:
+        B: 1
+        Z: 1
+        F: 1
+        Y: 1
+        S: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "upheaval"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 11.3
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 11.3
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit:
+      effect: "ground_airborne_target"
+      control_level: 1
+      immediate: true
+      shield_hit_counts: true
+      cancelled_by_hammer: false
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 11.3 点 · 2 伤害"
+  balance:
+    name: "均衡之刃"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        Z: 1
+        F: 1
+        Y: 1
+        S: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "balance"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 11.3
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 11.3
+      power_rule: "fixed"
+      damage_segments:
+        - 0
+      damage_rule: "balance"
+      conditional_damage:
+        B: 1
+        Z: 0.5
+        F: 1.5
+        Y: 2
+        S: 2.5
+        C: 3.5
+      anti_air: false
+      guard:
+        basic_defenses: []
+        action_rule: "nonBasicAction"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 11.3 点 · 0 伤害"
+  gun:
+    name: "枪"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Z: 1
+      real_shields: {}
+    stock_gain:
+      resource: "gun"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 0.8
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 0.8
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses: []
+        action_rule: "exceptDodgeAction"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 0.8 点 · 0.5 伤害"
+  flyingKnife:
+    name: "飞刀"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        S: 1
+      real_shields: {}
+    stock_gain:
+      resource: "flyingKnife"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 2.5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 1
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 2.5 点 · 1 伤害"
+  cloudArrow:
+    name: "穿云箭"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 2
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "cloudArrow"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 5.5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "F"
+          - "S"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "consume_whole_full_ghost_and_stop_partial_ghost_and_continue"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 5.5 点 · 1 伤害"
+  punchKick:
+    name: "拳打脚踢"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 3
+        F: 1
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "punchKick"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 6.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 6.5
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "B"
+          - "F"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "consume_whole_full_ghost_and_stop_partial_ghost_and_continue"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 6.5 点 · 2 伤害"
+  arcLight:
+    name: "弧光"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        Y: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "arcLight"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 6.5
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 6.5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "B"
+          - "Y"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: true
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 6.5 点 · 1 伤害"
+  hammer3:
+    name: "锤锤锤"
+    category: "attack"
+    is_spell: true
+    spell_classification_note: "攻击带有独立法术组件"
+    cost:
+      inventory:
+        B: 1
+        F: 1
+        Y: 1
+      real_shields: {}
+    stock_gain:
+      resource: "hammer3"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 4.5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "B"
+          - "Z"
+          - "S"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components:
+      -
+        kind: "cancel_new_spell_components"
+        stage: "R1c"
+        level: 2
+        target: "selected_opponent"
+        cancelled_by_hammer: false
+        preserves:
+          - "intrinsic_effects"
+          - "old_statuses"
+          - "attack_damage"
+          - "on_hit_callbacks"
+        removes_move_stock_gain: true
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "物理攻击 · 4.5 点 · 1 伤害"
+  ghostArrows:
+    name: "幽灵万箭齐发"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        ghostDodge: 2
+      real_shields: {}
+    stock_gain:
+      resource: "ghostArrows"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 16
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 16
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce:
+          - "foam"
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 16 点 · 2 伤害"
+  ghostSword:
+    name: "幽灵毁灭之剑"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        ghostDodge: 2
+      real_shields: {}
+    stock_gain:
+      resource: "ghostSword"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 16
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 1
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 16
+      power_rule: "fixed"
+      damage_segments:
+        - 6
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "Z"
+        action_rule: "ZOrSpell"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 16 点 · 6 伤害"
+  ghostFinisher:
+    name: "幽灵必杀"
+    category: "attack"
+    is_spell: false
+    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    cost:
+      inventory:
+        ghostDodge: 1
+        voidDodge: 1
+      real_shields: {}
+    stock_gain:
+      resource: "ghostFinisher"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 17.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 17.5
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses: []
+        action_rule: "nonBasicAction"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: true
+        ignore: []
+        pierce: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "法术攻击 · 17.5 点 · 1 伤害"
+  foam:
+    name: "泡沫盾"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        F: 1
+      real_shields: {}
+    stock_gain:
+      resource: "foam"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 2.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "foam"
+      name: "泡沫盾"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+    description: "制造持有装备，攻击前生效。"
+  ghost:
+    name: "幽灵盾"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory: {}
+      real_shields:
+        foam: 2
+    stock_gain:
+      resource: "ghost"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "ghost"
+      name: "幽灵盾"
+      grade: "ghost"
+      slots: 3
+      position: 3
+      electric: false
+      layers: 3
+      materials:
+        foam: 2
+    description: "制造持有装备，攻击前生效。"
+  lightning:
+    name: "闪电盾"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        S: 3
+      real_shields: {}
+    stock_gain:
+      resource: "lightning"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 8.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "lightning"
+      name: "闪电盾"
+      grade: "electric"
+      slots: 2
+      position: 3
+      electric: true
+      immuneResource: "S"
+    description: "制造持有装备，攻击前生效。"
+  thunder:
+    name: "雷电盾"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 1
+        C: 3
+      real_shields: {}
+    stock_gain:
+      resource: "thunder"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 11.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "thunder"
+      name: "雷电盾"
+      grade: "electric"
+      slots: 2
+      position: 3
+      electric: true
+      immuneResource: "C"
+    description: "制造持有装备，攻击前生效。"
+  ocean:
+    name: "海神盾"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Z: 3
+        F: 3
+      real_shields: {}
+    stock_gain:
+      resource: "ocean"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 6.9
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "ocean"
+      name: "海神盾"
+      grade: "electric"
+      slots: 2
+      position: 3
+      electric: true
+      immuneResource: "F"
+    description: "制造持有装备，攻击前生效。"
+  flame:
+    name: "烈焰盾"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 3
+        Y: 3
+      real_shields: {}
+    stock_gain:
+      resource: "flame"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 9
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "flame"
+      name: "烈焰盾"
+      grade: "electric"
+      slots: 2
+      position: 3
+      electric: true
+      immuneResource: "Y"
+      immuneMove: "phoenixFlame"
+    description: "制造持有装备，攻击前生效。"
+  producerB:
+    name: "大臂生产器"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        B: 5
+      real_shields: {}
+    stock_gain:
+      resource: "producerB"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "producerB"
+      name: "大臂生产器"
+      grade: "foam"
+      slots: 1
+      position: 4
+      electric: true
+      producer: "B"
+    description: "制造持有装备，攻击前生效。"
+  producerZ:
+    name: "攒攒生产器"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Z: 5
+      real_shields: {}
+    stock_gain:
+      resource: "producerZ"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "producerZ"
+      name: "攒攒生产器"
+      grade: "foam"
+      slots: 1
+      position: 4
+      electric: true
+      producer: "Z"
+    description: "制造持有装备，攻击前生效。"
+  producerF:
+    name: "方盾生产器"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        F: 5
+      real_shields: {}
+    stock_gain:
+      resource: "producerF"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "producerF"
+      name: "方盾生产器"
+      grade: "foam"
+      slots: 1
+      position: 4
+      electric: true
+      producer: "F"
+    description: "制造持有装备，攻击前生效。"
+  producerY:
+    name: "圆盾生产器"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Y: 5
+      real_shields: {}
+    stock_gain:
+      resource: "producerY"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "producerY"
+      name: "圆盾生产器"
+      grade: "foam"
+      slots: 1
+      position: 4
+      electric: true
+      producer: "Y"
+    description: "制造持有装备，攻击前生效。"
+  radar:
+    name: "雷达"
+    category: "equipment"
+    is_spell: false
+    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    cost:
+      inventory:
+        Z: 3
+        Y: 3
+      real_shields: {}
+    stock_gain:
+      resource: "radar"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 8.4
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "radar"
+      name: "雷达"
+      grade: "radar"
+      slots: 2
+      position: 3
+      electric: true
+      immuneAll: true
+    description: "制造持有装备，攻击前生效。"
+  shock:
+    name: "小电"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        C: 2
+      real_shields: {}
+    stock_gain:
+      resource: "shock"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 2
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "remove_equipment"
+        level: 1
+        target: "selected_opponent"
+        choose: "recipient_selects_one_electric_removable_instance"
+        immediate: true
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  phoenixGuard:
+    name: "凤之守护"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        Q: 1
+      real_shields: {}
+    stock_gain:
+      resource: "phoenixGuard"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 2
+      control_immunity_level: 2
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  ghostDodge:
+    name: "幽灵闪"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        B: 1
+        F: 1
+        Y: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "ghostDodge"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 8
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "self"
+        status: "ghostDodge"
+        positive: true
+        defense: "C"
+        start_offset: 1
+        duration_rounds: 2
+        refresh: "same_move_and_component_keep_earliest_start_and_latest_end"
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  chainDodge:
+    name: "连环闪"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        S: 2
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "chainDodge"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 8.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "self"
+        status: "chainDodge"
+        positive: true
+        defense: "S"
+        start_offset: 1
+        duration_rounds: 3
+        refresh: "same_move_and_component_keep_earliest_start_and_latest_end"
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  voidDodge:
+    name: "虚无闪"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        F: 1
+        Y: 1
+        S: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "voidDodge"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 9.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "self"
+        status: "voidDodge"
+        positive: true
+        defense: "C"
+        start_offset: 1
+        duration_rounds: 1
+        refresh: "max_remaining_duration"
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "self"
+        status: "voidDodge"
+        positive: true
+        immune_scopes:
+          - "single"
+          - "dual"
+          - "splash"
+        start_offset: 1
+        duration_rounds: 3
+        refresh: "max_remaining_duration"
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  thunderDodge:
+    name: "雷闪"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        C: 3
+      real_shields: {}
+    stock_gain:
+      resource: "thunderDodge"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 2
+      control_immunity_level: 2
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  heal:
+    name: "回一滴血"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        C: 3
+      real_shields: {}
+    stock_gain:
+      resource: "heal"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "heal"
+        target: "self"
+        amount: 1
+        cap_before_attacks: true
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  guardSix:
+    name: "防六拳合一"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "guardSix"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 0
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "guard_move"
+        target: "self"
+        move: "sixFists"
+        duration_rounds: 1
+        start_offset: 0
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  axi:
+    name: "阿西吧"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "axi"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 3.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 2
+      control_immunity_level: 2
+      basic_defense: null
+      start_of_round_life_loss: 1
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"
+  crucio:
+    name: "钻心咒"
+    category: "spell"
+    is_spell: true
+    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    cost:
+      inventory:
+        C: 5
+      real_shields: {}
+    stock_gain:
+      resource: "crucio"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 17.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "selected_opponent"
+        level: 1
+        status: "crucio"
+        positive: false
+        start_offset: 1
+        duration_rounds: 15
+        refresh: "max_remaining_duration_not_multiple_stacks"
+        on_action:
+          actual_basic_resources:
+            - "S"
+            - "C"
+          stage: "R1a"
+          life_loss: 2
+          damage: false
+          preventable: false
+    on_hit: null
+    on_block: null
+    equipment: null
+    description: "攻击前施放法术。"

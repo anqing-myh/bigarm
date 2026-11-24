@@ -31,7 +31,11 @@ export function createServer(options = {}) {
   function roomView(room, self) {
     const visible = room.phase !== 'selecting' && room.phase !== 'waiting';
     const gameState = room.phase === 'choice' ? room.job.state : room.match;
-    const players = room.members.map(member => ({ ...(gameState?.players.find(p => p.id === member.id) || createPlayer(member.id, member.name, member.seat)), ...member }));
+    const players = room.members.map(member => {
+      const p = gameState?.players.find(p => p.id === member.id) || createPlayer(member.id, member.name, member.seat);
+      const awaitingDeathCheck = room.phase === 'choice' && room.job.phase !== 'discard' && room.job.live.includes(p.id);
+      return { ...p, ...member, defeated: p.hp <= 0 && !awaitingDeathCheck };
+    });
     return {
       id: room.id, name: room.name, hostId: room.hostId, capacity: room.capacity, phase: room.phase, round: ['reveal', 'finished'].includes(room.phase) ? room.result?.round : room.match?.round || 0,
       players, submitted: Object.keys(room.actions), ownAction: room.actions[self.id] || null, actions: visible ? room.actions : null,
@@ -98,12 +102,12 @@ export function createServer(options = {}) {
     room.match.ongoing = room.match.ongoing.filter(e => room.match.players.some(p => p.id === e.action.targets[0] && p.hp > 0));
     const living = room.match.players.filter(p => p.hp > 0);
     const finished = living.length <= 1, winnerId = finished && living.length ? living[0].id : null;
-    room.result = { round: room.job.completedRound, finished, winnerId, logs: room.job.logs, damage: room.job.damage, hasDamage: room.job.hasDamage };
+    room.result = { round: room.job.completedRound, finished, winnerId, logs: room.job.logs, damage: room.job.damage, lifeLoss: room.job.lifeLoss, hasDamage: room.job.hasDamage, hasLifeLoss: room.job.hasLifeLoss };
     room.history.unshift({ ...room.result, actions: structuredClone(room.actions), gameNumber: room.gameNumber });
     room.history = room.history.slice(0, 100);
     if (finished) lockResult(room, winnerId);
     room.phase = 'reveal';
-    timer(room, options.revealMs ?? (room.job.hasDamage ? 5000 : 2000), () => {
+    timer(room, options.revealMs ?? (room.job.hasDamage || room.job.hasLifeLoss ? 5000 : 2000), () => {
       if (room.result.finished) { room.phase = 'finished'; room.deadline = null; for (const m of room.members) m.ready = false; }
       else nextRound(room);
     });

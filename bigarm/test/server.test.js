@@ -43,7 +43,7 @@ test('HTTP identity, capacity, origin, static allowlist and shared pure module',
   await f.api('/api/rooms/capacity', { capacity: 3 }, a.token);
   await f.api('/api/rooms/join', { roomId: id }, c.token);
   assert.equal((await f.state(c.token)).room.players.length, 3);
-  const rules = await f.api('/api/rules'); assert.equal(Object.keys(rules.moves).length, 57);
+  const rules = await f.api('/api/rules'); assert.equal(Object.keys(rules.moves).length, 68);
   assert.equal((await fetch(f.base + '/rules/engine.js')).status, 200);
   assert.equal((await fetch(f.base + '/rules/catalog.js')).status, 200);
   assert.equal((await fetch(f.base + '/interaction.js')).status, 200);

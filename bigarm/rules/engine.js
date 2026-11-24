@@ -1,5 +1,5 @@
 import { MOVES, EQUIPMENT, RESOURCE_NAMES, WEIGHTS, RULE_VERSION } from './catalog.js';
-export { MOVES, EQUIPMENT, RESOURCE_NAMES, RULE_VERSION } from './catalog.js';
+export { MOVES, EQUIPMENT, RESOURCE_NAMES, BASE_RESOURCE_NAMES, WEIGHTS, RULE_VERSION } from './catalog.js';
 
 // A continuation is JSON data. Pure entry points clone their inputs; no I/O or clock.
 const clone = value => structuredClone(value);
@@ -23,7 +23,7 @@ export function validateAction(state, id, action) {
   for (const [k, n] of Object.entries(m.cost)) if ((p.resources[k] || 0) < n) fail(`${RESOURCE_NAMES[k]}不足。`);
   if (m.resource === 'C' && p.history.at(-1) === 'C') fail('超闪不能连续两回合使用。');
   if ('SC'.includes(m.resource || '-') && p.history.length >= 2 && p.history.slice(-2).every(k => 'SC'.includes(k))) fail('闪和超闪合计不能连续三回合使用。');
-  if (m.equipment === 'ghost' && p.shields.filter(s => s.type === 'foam').length < 2) fail('需要两面泡沫盾。');
+  for (const [type, count] of Object.entries(m.materials || {})) if (p.shields.filter(s => s.type === type).length < count) fail(`需要 ${count} 面真实${EQUIPMENT[type].name}。`);
   const result = { move: m.id };
   if (m.target === 'dual') {
     if (!Array.isArray(action.targets) || action.targets.length < 1 || action.targets.length > 2 || new Set(action.targets).size !== action.targets.length) fail('地震需要一至两个不同目标。');
@@ -79,7 +79,18 @@ const activeEffects = (job, p) => p.effects.filter(e => e.start <= job.state.rou
 function defenses(job, p) {
   return [MOVES[job.actions[p.id]?.move]?.resource || '', ...activeEffects(job, p).filter(e => e.kind === 'defense').map(e => e.value)].join('');
 }
-function controlImmune(job, p) { return (job.protection[p.id]?.control || 0) >= 1; }
+function controlImmune(job, p, level = 1) { return (job.protection[p.id]?.control || 0) >= level; }
+function addEffect(job, target, move, kind, value, start, end, source = target.id) {
+  const current = target.effects.find(e => e.move === move && e.kind === kind && e.value === value && e.end >= job.state.round);
+  if (current) { current.start = Math.min(current.start, start); current.end = Math.max(current.end, end); return; }
+  target.effects.push({ id: uid(job.state, 'e'), move, name: MOVES[move].name, kind, value, source, positive: kind !== 'curse', start, end });
+}
+function loseLife(job, target, amount, move, source = target.id) {
+  target.hp -= amount;
+  const entry = { id: uid(job.state, 'l'), target: target.id, amount, move, source };
+  job.lifeLoss.push(entry);
+  log(job, 'lifeLoss', `${target.name} 因${MOVES[move].name}流失 ${amount} 点体力。`, entry);
+}
 function shieldInteraction(hit, s) {
   const grade = EQUIPMENT[s.type].grade, isFoam = grade === 'foam' || grade === 'ghost';
   if ((hit.ignore || []).some(g => g === grade || (g === 'foam' && isFoam))) return 'ignore';
@@ -101,7 +112,7 @@ function recordDamage(job, target, amount, hit, source = hit.source) {
   log(job, 'damage', `${player(job.state, target).name} 受到 ${amount} 点伤害。`, { ...entry });
 }
 function makeHits(job) {
-  const state = job.state, live = alive(state), ids = live.map(p => p.id), batches = [];
+  const state = job.state, live = job.live.map(id => player(state, id)), ids = [...job.live], batches = [];
   const emit = (source, action, serial) => {
     const m = MOVES[action.move];
     let targets = [];
@@ -128,7 +139,7 @@ function makeHits(job) {
   for (const ongoing of state.ongoing) if (ongoing.start <= state.round && ongoing.end >= state.round && ids.includes(ongoing.action.targets[0])) emit(ongoing.source, ongoing.action, serial++);
   for (const p of live) {
     const a = job.actions[p.id], m = MOVES[a.move];
-    if (m.type === 'attack' && !m.duration) emit(p.id, a, serial++);
+    if (m.type === 'attack' && !m.duration && !m.delay) emit(p.id, a, serial++);
   }
   batches.sort((a, b) => b.power - a.power || a.seat - b.seat || a.serial - b.serial || a.part - b.part);
   job.hits = batches.flatMap(b => b.hits);
@@ -140,7 +151,7 @@ function makeHits(job) {
     if (cm.id === 'knifePoint') return !!hm.cost.B;
     if (hm.id === 'knifePoint') return !cm.cost.B;
     if (hm.fallback) return false;
-    return counter.power >= hit.power;
+    return cm.reverseClash || hm.reverseClash ? counter.power <= hit.power : counter.power >= hit.power;
   };
   // Compare immutable intentions, including already executed or subsequently blocked hits.
   for (const h of job.hits) h.suppressed = job.hits.some(c => c.source === h.target && c.target === h.source && outranks(c, h));
@@ -157,7 +168,10 @@ function resolveHit(job, hit) {
     if (!hit.air && p.airborne) { log(job, 'air', `${p.name} 在空中，${m.name} 未命中。`); return true; }
     if (isImmune(job, p, hit)) { log(job, 'immune', `${p.name} 免疫了${m.name}。`); return true; }
     const basic = MOVES[job.actions[p.id]?.move];
-    const blocked = m.damageRule === 'balance' ? basic?.type !== 'basic'
+    const blocked = m.guardRule === 'exceptDodgeAction' ? !['basicS', 'basicC'].includes(basic?.id)
+      : m.guardRule === 'nonBasicAction' ? basic?.type !== 'basic'
+      : m.guardRule === 'ZOrSpell' ? basic?.resource === 'Z' || !!basic?.hasSpell
+      : m.damageRule === 'balance' ? basic?.type !== 'basic'
       : (m.id === 'sixFists' && job.protection[p.id]?.six) || [...defenses(job, p)].some(k => m.guard.includes(k) && !(m.firstOnly === k && hit.segment > 0));
     if (blocked) {
       log(job, 'block', `${p.name} 防住了${m.name}。`, { source: hit.source, target: p.id });
@@ -179,10 +193,12 @@ function resolveHit(job, hit) {
       if (!id) return false;
       delete hit.selectedShield;
       const shield = p.shields.find(s => s.id === id), interaction = shieldInteraction(hit, shield);
-      shield.layers -= interaction === 'pierce' && shield.type === 'ghost' ? 2 : 1;
+      const wholeGhost = interaction === 'pierce' && shield.type === 'ghost' && m.ghostPierce === 'whole';
+      const fullGhostStops = wholeGhost && shield.layers === EQUIPMENT.ghost.layers;
+      shield.layers -= wholeGhost ? shield.layers : interaction === 'pierce' && shield.type === 'ghost' ? 2 : 1;
       if (shield.layers <= 0) p.shields = p.shields.filter(s => s.id !== id);
       log(job, interaction === 'pierce' ? 'pierce' : 'shield', `${p.name} 的${EQUIPMENT[shield.type].name}${shield.layers > 0 ? '损失盾层' : '被消耗'}。`, { shieldId: id, target: p.id });
-      if (interaction !== 'pierce' || shield.layers > 0) { hitCallback(job, hit); return true; }
+      if (interaction !== 'pierce' || shield.layers > 0 || fullGhostStops) { hitCallback(job, hit); return true; }
     }
   }
   recordDamage(job, p.id, hit.amount, hit);
@@ -190,11 +206,35 @@ function resolveHit(job, hit) {
 }
 function advance(job) {
   job.status = 'running'; job.pending = null;
+  job.lifeLoss ||= []; job.cancelledSpells ||= [];
   while (true) {
+    if (job.phase === 'priority') {
+      for (const id of job.live) {
+        const a = job.actions[id], m = MOVES[a.move];
+        if (m.spell !== 'silence') continue;
+        const target = player(job.state, a.targets[0]);
+        if (controlImmune(job, target, m.controlLevel)) log(job, 'controlImmune', `${target.name} 免疫了锤锤锤的禁法。`, { source: id, target: target.id });
+        else {
+          if (!job.cancelledSpells.includes(target.id)) job.cancelledSpells.push(target.id);
+          log(job, 'silence', `${target.name} 本回合新施放的普通法术被锤锤锤取消。`, { source: id, target: target.id });
+        }
+      }
+      for (const id of job.live) {
+        const p = player(job.state, id), m = MOVES[job.actions[id].move];
+        if (m.type === 'basic' || m.spell && m.spell !== 'silence' && job.cancelledSpells.includes(id)) continue;
+        p.resources[m.id] = (p.resources[m.id] || 0) + 1;
+        log(job, 'stock', `${p.name} 获得 1 个${m.name}招式资源。`, { target: id, resource: m.id, amount: 1 });
+      }
+      job.phase = 'spells'; job.cursor = 0; continue;
+    }
     if (job.phase === 'spells') {
       const id = job.live[job.cursor];
       if (!id) { makeHits(job); job.phase = 'hits'; job.cursor = 0; continue; }
       const p = player(job.state, id), a = job.actions[id], m = MOVES[a.move], t = job.state.round;
+      if (m.spell && m.spell !== 'silence' && job.cancelledSpells.includes(id)) {
+        log(job, 'spellCancelled', `${p.name} 的${m.name}法术组件未生效。`, { source: id, move: m.id });
+        job.cursor++; continue;
+      }
       if (m.spell === 'shock' && !controlImmune(job, player(job.state, a.targets[0]))) {
         const target = player(job.state, a.targets[0]), options = target.shields.filter(s => EQUIPMENT[s.type].electric).map(s => ({ id: s.id, label: EQUIPMENT[s.type].name }));
         if (options.length) {
@@ -206,8 +246,16 @@ function advance(job) {
       }
       if (m.spell === 'blessing') { p.resources.Q += 3; log(job, 'gain', `${p.name} 获得 3 祝福值。`); }
       if (m.spell === 'heal') { const amount = Math.min(1, p.maxHp - p.hp); p.hp += amount; log(job, 'heal', `${p.name} 恢复 ${amount} 生命。`); }
-      if (m.spell === 'defense') p.effects.push({ id: uid(job.state, 'e'), kind: 'defense', value: m.defense, start: t, end: t + m.duration - 1 });
-      if (m.spell === 'void') p.effects.push({ id: uid(job.state, 'e'), kind: 'defense', value: 'C', start: t, end: t }, { id: uid(job.state, 'e'), kind: 'scope', start: t, end: t + 2 });
+      if (m.spell === 'defense') addEffect(job, p, m.id, 'defense', m.defense, t + 1, t + m.duration);
+      if (m.spell === 'void') {
+        addEffect(job, p, m.id, 'defense', 'C', t + 1, t + 1);
+        addEffect(job, p, m.id, 'scope', null, t + 1, t + 3);
+      }
+      if (m.spell === 'curse') {
+        const target = player(job.state, a.targets[0]);
+        if (controlImmune(job, target, m.controlLevel)) log(job, 'controlImmune', `${target.name} 免疫了${m.name}。`, { source: id, target: target.id });
+        else { addEffect(job, target, m.id, 'curse', 'dodgeLifeLoss', t + 1, t + m.duration, id); log(job, 'status', `${target.name} 将从下一回合进入${m.name}状态。`, { source: id, target: target.id, move: m.id }); }
+      }
       if (m.spell === 'guardSix') job.protection[id].six = true;
       job.cursor++; continue;
     }
@@ -237,6 +285,7 @@ function advance(job) {
       const survivors = alive(job.state);
       job.finished = survivors.length <= 1; job.winnerId = job.finished && survivors.length ? survivors[0].id : null;
       job.hasDamage = job.damage.some(d => d.amount > d.blessing);
+      job.hasLifeLoss = job.lifeLoss.length > 0;
       job.completedRound = job.state.round;
       job.state.round++;
       for (const p of job.state.players) p.effects = p.effects.filter(e => e.end >= job.state.round);
@@ -252,7 +301,15 @@ export function beginRound(input, submitted) {
   state.players.sort((a, b) => a.seat - b.seat);
   state.ongoing.sort((a, b) => a.start - b.start || Number(a.id.slice(1)) - Number(b.id.slice(1)) || a.id.localeCompare(b.id));
   const live = alive(state);
-  const job = { state, actions, live: live.map(p => p.id), protection: Object.fromEntries(live.map(p => [p.id, null])), logs: [], damage: [], hits: [], blessed: [], phase: 'spells', cursor: 0, status: 'running', pending: null };
+  const job = { state, actions, live: live.map(p => p.id), protection: Object.fromEntries(live.map(p => [p.id, null])), logs: [], damage: [], lifeLoss: [], hits: [], blessed: [], cancelledSpells: [], phase: 'priority', cursor: 0, status: 'running', pending: null };
+  // Fix the round participants before unavoidable life loss; death is still decided at round end.
+  for (const p of live) {
+    const m = MOVES[actions[p.id].move];
+    if (m.lifeCost) loseLife(job, p, m.lifeCost, m.id);
+    if ('SC'.includes(m.resource || '-')) for (const e of activeEffects(job, p)) {
+      if (e.kind === 'curse' && e.value === 'dodgeLifeLoss') loseLife(job, p, 2, e.move, e.source);
+    }
+  }
   for (const p of live) {
     const a = actions[p.id], m = MOVES[a.move];
     for (const [key, n] of Object.entries(m.cost)) p.resources[key] -= n;
@@ -264,10 +321,16 @@ export function beginRound(input, submitted) {
     }
     p.history = [...p.history, m.resource || '-'].slice(-2);
     if (m.equipment) {
-      if (m.equipment === 'ghost') { const ids = p.shields.filter(s => s.type === 'foam').slice(0, 2).map(s => s.id); p.shields = p.shields.filter(s => !ids.includes(s.id)); }
+      for (const [type, count] of Object.entries(m.materials || {})) {
+        const ids = p.shields.filter(s => s.type === type).slice(0, count).map(s => s.id);
+        p.shields = p.shields.filter(s => !ids.includes(s.id));
+      }
       addShield(state, p, m.equipment);
     }
-    if (m.duration && m.type === 'attack') state.ongoing.push({ id: uid(state, 'o'), source: p.id, action: clone(a), start: state.round, end: state.round + m.duration - 1 });
+    if (m.type === 'attack' && (m.duration || m.delay)) {
+      const start = state.round + (m.delay || 0);
+      state.ongoing.push({ id: uid(state, 'o'), source: p.id, action: clone(a), start, end: start + (m.duration || 1) - 1 });
+    }
   }
   return advance(job);
 }
