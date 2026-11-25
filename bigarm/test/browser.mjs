@@ -72,6 +72,18 @@ try {
   await a.screenshot({ path: 'test-results/selection-desktop.png', fullPage: true });
   await move(a, 'basicB');
   const secret = await info(b); assert.equal(secret.room.actions, null); assert.equal(secret.room.ownAction, null);
+  const spectator = await page(390); await spectator.setViewportSize({ width: 390, height: 844 });
+  await login(spectator, '观战朋友');
+  await spectator.locator(`[data-act=join][data-id="${roomId}"]`).click();
+  await spectator.locator('.spectator-panel').waitFor();
+  assert.equal((await info(spectator)).room.isSpectator, true);
+  assert.equal((await info(spectator)).room.actions, null);
+  assert.equal(await spectator.locator('.seat').count(), 2);
+  assert.equal(await spectator.locator('[data-act=lock], [data-act=ready], .targetable').count(), 0);
+  await battlefieldFits(spectator);
+  await spectator.locator('.seat').first().click(); await spectator.locator('.equipment-detail').waitFor(); await spectator.locator('#close-modal').click();
+  await spectator.reload(); await spectator.locator('.spectator-panel').waitFor();
+  await spectator.screenshot({ path: 'test-results/spectator-mobile.png', fullPage: true });
   await move(b, 'basicB'); await waitInfo(a, s => s.room.round === 2 && s.room.phase === 'selecting');
   await round(a, b, 'kick', 'basicB');
   assert.equal((await info(b)).room.players.find(p => p.name === '乙').hp, 4);
@@ -92,6 +104,8 @@ try {
   await move(a, 'punch'); await move(b, 'basicZ');
   const pending = await waitInfo(b, s => s.room.phase === 'choice'); assert.equal(pending.room.pending.playerId, pending.self.id);
   await b.reload(); await b.locator('.choice-option').first().waitFor();
+  await spectator.locator('.spectator-panel').waitFor();
+  assert.equal(await spectator.locator('.choice-option, #blessing, [data-act=lock]').count(), 0);
   await b.setViewportSize({ width: 390, height: 844 }); await fits(b);
   await b.screenshot({ path: 'test-results/choice-mobile.png', fullPage: true });
   await a.screenshot({ path: 'test-results/arena-desktop.png', fullPage: true });
@@ -103,6 +117,10 @@ try {
   await a.locator('.arena-corner [data-act=history]').click(); assert.ok((await a.locator('#modal-content').innerText()).includes('命中')); await a.locator('#close-modal').click();
   await b.locator('[data-act=leave]').click(); await waitInfo(a, s => s.room.phase === 'finished');
   await a.locator('[data-act=scores]').click(); assert.ok((await a.locator('#modal-content').innerText()).includes('1 胜')); await a.locator('#close-modal').click();
+  await spectator.locator('[data-act=participate]:not([disabled])').waitFor();
+  await spectator.locator('[data-act=participate]').click(); await spectator.locator('[data-act=ready]').waitFor();
+  assert.equal((await info(spectator)).room.isSpectator, false);
+  await spectator.locator('[data-act=leave]').click();
   const c = await page(390); await login(c, '丙', `${base}/?room=${roomId}`); await c.locator('.room-toolbar').waitFor(); await fits(c);
   await c.screenshot({ path: 'test-results/room-mobile.png', fullPage: true });
   assert.equal((await info(c)).room.id, roomId);

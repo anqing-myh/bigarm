@@ -38,10 +38,12 @@ test('HTTP identity, capacity, origin, static allowlist and shared pure module',
   await f.api('/api/rooms/create', { capacity: 2 }, a.token);
   const b = await f.session('乙'), c = await f.session('丙'), id = (await f.state(a.token)).room.id;
   await f.api('/api/rooms/join', { roomId: id }, b.token);
-  await f.api('/api/rooms/join', { roomId: id }, c.token, 400);
+  await f.api('/api/rooms/join', { roomId: id }, c.token);
+  assert.equal((await f.state(c.token)).room.isSpectator, true);
+  await f.api('/api/rooms/participate', {}, c.token, 400);
   await f.api('/api/rooms/capacity', { capacity: 3 }, b.token, 400);
   await f.api('/api/rooms/capacity', { capacity: 3 }, a.token);
-  await f.api('/api/rooms/join', { roomId: id }, c.token);
+  await f.api('/api/rooms/participate', {}, c.token);
   assert.equal((await f.state(c.token)).room.players.length, 3);
   const rules = await f.api('/api/rules'); assert.equal(Object.keys(rules.moves).length, 68);
   assert.equal((await fetch(f.base + '/rules/engine.js')).status, 200);
@@ -106,6 +108,12 @@ test('real mid-round shield choice is owned, resumable, visible and charged once
   s = await f.state(b.token); assert.equal(s.room.phase, 'choice'); assert.equal(s.room.pending.kind, 'shield');
   assert.equal(s.room.pending.playerId, b.self.id); assert.ok(s.room.actions[a.self.id]);
   const c = s.room.pending;
+  const watcher = await f.session('选盾观众');
+  await f.api('/api/rooms/join', { roomId: s.room.id }, watcher.token);
+  const view = (await f.state(watcher.token)).room;
+  assert.deepEqual(view.pending, { kind: 'shield', playerId: b.self.id });
+  assert.ok(view.actions[a.self.id]);
+  await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options[0].id }, watcher.token, 400);
   await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options[0].id }, a.token, 400);
   await f.api('/api/game/choice', { round: round - 1, requestId: c.id, answer: c.options[0].id }, b.token, 400);
   await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options[0].id }, b.token);
@@ -113,6 +121,45 @@ test('real mid-round shield choice is owned, resumable, visible and charged once
   assert.equal(s.room.players.find(p => p.id === a.self.id).resources.B, before - 1);
   assert.equal(s.room.players.find(p => p.id === b.self.id).shields.length, 1);
   assert.equal(s.room.players.find(p => p.id === b.self.id).hp, 5);
+});
+
+test('mid-game spectators preserve secrecy, cannot act, do not affect timers, scores or next-game readiness', async t => {
+  const f = await fixture(t), { a, b, id } = await f.room(), c = await f.session('观众');
+  await f.api('/api/game/action', { round: 1, move: 'basicB' }, a.token);
+  const before = (await f.state(a.token)).room;
+  await f.api('/api/rooms/join', { roomId: id }, c.token);
+  let view = (await f.state(c.token)).room;
+  assert.equal(view.isSpectator, true); assert.equal(view.players.length, 2); assert.equal(view.spectators.length, 1);
+  assert.equal(view.actions, null); assert.equal(view.ownAction, null); assert.equal(view.deadline, before.deadline);
+  for (const route of ['/api/game/action', '/api/game/choice', '/api/rooms/ready', '/api/rooms/participate']) await f.api(route, { move: 'basicB', round: 1 }, c.token, 400);
+  await f.api('/api/rooms/leave', {}, c.token);
+  assert.equal((await f.state(a.token)).room.deadline, before.deadline);
+  await f.api('/api/rooms/join', { roomId: id }, c.token);
+  await f.api('/api/game/action', { round: 1, move: 'basicB' }, b.token);
+  await f.wait(c.token, s => s.room.phase === 'selecting' && s.room.round === 2);
+  await f.api('/api/rooms/leave', {}, b.token);
+  view = (await f.wait(c.token, s => s.room.phase === 'finished')).room;
+  assert.equal(view.lastMatch.winnerId, a.self.id);
+  assert.ok(!view.leaderboard.some(p => p.id === c.self.id));
+  await f.api('/api/rooms/participate', {}, c.token);
+  assert.equal((await f.state(c.token)).room.isSpectator, false);
+  const d = await f.session('留场观众'); await f.api('/api/rooms/join', { roomId: id }, d.token);
+  assert.equal((await f.state(d.token)).room.isSpectator, true);
+  await f.api('/api/rooms/ready', {}, a.token); await f.api('/api/rooms/ready', {}, c.token);
+  view = (await f.state(c.token)).room;
+  assert.equal(view.gameNumber, 2); assert.equal(view.players.length, 2); assert.equal(view.spectators.length, 1);
+});
+
+test('spectator-only rooms survive players leaving and disappear when the last observer leaves', async t => {
+  const f = await fixture(t), { a, b, id } = await f.room(), c = await f.session('观众');
+  await f.api('/api/rooms/join', { roomId: id }, c.token);
+  await f.api('/api/rooms/leave', {}, a.token); await f.api('/api/rooms/leave', {}, b.token);
+  let view = (await f.wait(c.token, s => s.room.phase === 'finished')).room;
+  assert.equal(view.hostId, c.self.id); assert.equal(view.lastMatch.winnerId, b.self.id, 'already locked winner is retained after departure');
+  await f.api('/api/rooms/participate', {}, c.token);
+  view = (await f.state(c.token)).room; assert.equal(view.players.filter(p => !p.left).length, 1);
+  await f.api('/api/rooms/leave', {}, c.token);
+  assert.ok(!(await f.state(c.token)).rooms.some(r => r.id === id));
 });
 test('disconnect grace expires without blocking the connected player or host transfer', async t => {
   const f = await fixture(t, { disconnectMs: 250 }), { a, b } = await f.room();

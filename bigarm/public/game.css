@@ -150,3 +150,5 @@
 .stock-list > div { display: flex; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 7px; padding: 10px; }
 .stock-list span { color: var(--accent); }
 .player-effects { margin: 12px 0; }
+.watcher-list { display: block; overflow-wrap: anywhere; max-height: 44px; overflow-y: auto; font-size: 10px; }
+.spectator-panel p { margin-bottom: 12px; }

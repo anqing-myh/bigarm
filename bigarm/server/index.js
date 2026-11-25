@@ -29,6 +29,7 @@ export function createServer(options = {}) {
     room.timer.unref?.();
   }
   function roomView(room, self) {
+    const isSpectator = room.spectators.some(s => s.id === self.id);
     const visible = room.phase !== 'selecting' && room.phase !== 'waiting';
     const gameState = room.phase === 'choice' ? room.job.state : room.match;
     const players = room.members.map(member => {
@@ -38,13 +39,21 @@ export function createServer(options = {}) {
     });
     return {
       id: room.id, name: room.name, hostId: room.hostId, capacity: room.capacity, phase: room.phase, round: ['reveal', 'finished'].includes(room.phase) ? room.result?.round : room.match?.round || 0,
-      players, submitted: Object.keys(room.actions), ownAction: room.actions[self.id] || null, actions: visible ? room.actions : null,
-      pending: room.phase === 'choice' ? room.job.pending : null, deadline: room.deadline, history: room.history,
+      players, spectators: room.spectators, isSpectator, submitted: Object.keys(room.actions), ownAction: isSpectator ? null : room.actions[self.id] || null, actions: visible ? room.actions : null,
+      pending: room.phase === 'choice' ? isSpectator ? { kind: room.job.pending.kind, playerId: room.job.pending.playerId } : room.job.pending : null, deadline: room.deadline, history: room.history,
       lastMatch: room.lastMatch, gameNumber: room.gameNumber, leaderboard: Object.values(room.scores).sort((a, b) => b.wins - a.wins),
       result: room.result,
     };
   }
-  const lobby = () => [...rooms.values()].map(r => ({ id: r.id, name: r.name, capacity: r.capacity, count: active(r).length, phase: r.phase }));
+  const lobby = () => [...rooms.values()].map(r => ({ id: r.id, name: r.name, capacity: r.capacity, count: active(r).length, spectators: r.spectators.length, phase: r.phase }));
+  function takeSeat(room, session) {
+    if (playing(room)) fail('本局尚未结束，只能观战。');
+    if (active(room).length >= room.capacity) fail('参赛座位已满，可以继续观战。');
+    room.members = active(room);
+    const seat = Array.from({ length: 10 }, (_, i) => i).find(i => !room.members.some(m => m.seat === i));
+    const member = { id: session.id, name: session.name, seat, ready: false, connected: true, left: false };
+    room.members.push(member); room.spectators = room.spectators.filter(s => s.id !== session.id); scoreMember(room, member);
+  }
   function snapshot(session) {
     const room = rooms.get(session.roomId);
     return { self: { id: session.id, name: session.name }, room: room ? roomView(room, session) : null, rooms: lobby(), serverTime: Date.now(), revision };
@@ -115,10 +124,13 @@ export function createServer(options = {}) {
   function leave(session) {
     const room = rooms.get(session.roomId); session.roomId = null;
     if (!room) return;
+    const watching = room.spectators.some(s => s.id === session.id);
+    room.spectators = room.spectators.filter(s => s.id !== session.id);
     const member = room.members.find(m => m.id === session.id);
     if (member) { member.left = true; member.ready = false; member.connected = false; }
-    if (!active(room).length) { clearTimeout(room.timer); rooms.delete(room.id); return; }
-    if (room.hostId === session.id) room.hostId = active(room)[0].id;
+    if (!active(room).length && !room.spectators.length) { clearTimeout(room.timer); rooms.delete(room.id); return; }
+    if (room.hostId === session.id) room.hostId = active(room)[0]?.id || room.spectators[0].id;
+    if (watching) return;
     if (room.phase === 'selecting') {
       if (actors(room).length <= 1 || actors(room).every(p => room.actions[p.id])) settle(room);
     } else if (room.phase === 'choice') { clearTimeout(room.timer); progress(room); }
@@ -156,7 +168,7 @@ export function createServer(options = {}) {
         const token = url.pathname === '/api/events' ? url.searchParams.get('token') : req.headers.authorization?.replace(/^Bearer /, '');
         const session = sessions.get(token); if (!session) return json(res, 401, { error: '身份已过期，请重新进入。' });
         session.lastSeen = Date.now();
-        const existing = rooms.get(session.roomId), member = existing?.members.find(m => m.id === session.id && !m.left);
+        const existing = rooms.get(session.roomId), member = existing?.members.find(m => m.id === session.id && !m.left) || existing?.spectators.find(s => s.id === session.id);
         if (member) member.connected = true;
         if (url.pathname === '/api/state' && req.method === 'GET') return json(res, 200, snapshot(session));
         if (url.pathname === '/api/events' && req.method === 'GET') {
@@ -165,7 +177,7 @@ export function createServer(options = {}) {
           const beat = setInterval(() => { if (!res.destroyed) res.write(': heartbeat\n\n'); }, 15000); beat.unref();
           req.on('close', () => {
             clearInterval(beat); session.streams.delete(res);
-            if (!session.streams.size) { session.lastSeen = Date.now(); const room = rooms.get(session.roomId); const m = room?.members.find(m => m.id === session.id); if (m) m.connected = false; broadcast(); }
+            if (!session.streams.size) { session.lastSeen = Date.now(); const room = rooms.get(session.roomId); const m = room?.members.find(m => m.id === session.id) || room?.spectators.find(s => s.id === session.id); if (m) m.connected = false; broadcast(); }
           }); return;
         }
         if (req.method !== 'POST') return json(res, 404, { error: '接口不存在。' });
@@ -178,16 +190,22 @@ export function createServer(options = {}) {
             const capacity = Number(body.capacity ?? 10); if (!Number.isInteger(capacity) || capacity < 2 || capacity > 10) fail('人数限制为 2–10。');
             if (rooms.size >= 200) fail('当前房间已满。');
             let id; do { id = randomBytes(3).toString('hex').toUpperCase(); } while (rooms.has(id));
-            room = { id, name: clean(body.name) || `${session.name}的房间`, hostId: session.id, capacity, phase: 'waiting', members: [{ id: session.id, name: session.name, seat: 0, ready: false, connected: true, left: false }], actions: {}, match: null, job: null, history: [], scores: {}, gameNumber: 0, lastMatch: null, result: null, deadline: null };
+            room = { id, name: clean(body.name) || `${session.name}的房间`, hostId: session.id, capacity, phase: 'waiting', members: [{ id: session.id, name: session.name, seat: 0, ready: false, connected: true, left: false }], spectators: [], actions: {}, match: null, job: null, history: [], scores: {}, gameNumber: 0, lastMatch: null, result: null, deadline: null };
             scoreMember(room, room.members[0]); rooms.set(id, room); session.roomId = id; break;
           }
           case '/api/rooms/join': {
             if (room) fail('你已在房间中。');
             room = rooms.get(String(body.roomId || '').trim().toUpperCase()); if (!room) fail('房间不存在。');
-            if (playing(room)) fail('正在对局，请等待结束。'); if (active(room).length >= room.capacity) fail('房间已满。');
-            room.members = active(room); const seat = Array.from({ length: 10 }, (_, i) => i).find(i => !room.members.some(m => m.seat === i));
-            let name = session.name, n = 2; while (room.members.some(m => m.name === name)) name = `${session.name}·${n++}`;
-            const m = { id: session.id, name, seat, ready: false, connected: true, left: false }; room.members.push(m); scoreMember(room, m); session.roomId = room.id; break;
+            let name = session.name, n = 2; while ([...active(room), ...room.spectators].some(m => m.name === name)) name = `${session.name}·${n++}`;
+            const identity = { ...session, name };
+            if (playing(room) || body.spectate === true || active(room).length >= room.capacity) room.spectators.push({ id: session.id, name, connected: true });
+            else takeSeat(room, identity);
+            session.roomId = room.id; break;
+          }
+          case '/api/rooms/participate': {
+            const spectator = room?.spectators.find(s => s.id === session.id);
+            if (!spectator) fail('你当前不是观众。');
+            takeSeat(room, { ...session, name: spectator.name }); break;
           }
           case '/api/rooms/leave': leave(session); break;
           case '/api/rooms/ready': {
@@ -199,12 +217,14 @@ export function createServer(options = {}) {
             const n = Number(body.capacity); if (!Number.isInteger(n) || n < 2 || n > 10 || n < active(room).length) fail('人数限制无效。'); room.capacity = n; break;
           }
           case '/api/game/action': {
+            if (room?.spectators.some(s => s.id === session.id)) fail('观众不能出招。');
             if (!room || room.phase !== 'selecting') fail('当前不是选招阶段。');
             if (body.round !== room.match.round) fail('回合已更新。'); if (room.actions[session.id]) fail('已经锁定行动。');
             room.actions[session.id] = validateAction(room.match, session.id, body);
             if (actors(room).every(p => room.actions[p.id])) settle(room); break;
           }
           case '/api/game/choice': {
+            if (room?.spectators.some(s => s.id === session.id)) fail('观众不能参与回合选择。');
             if (!room || room.phase !== 'choice') fail('当前不需要选择。'); if (body.round !== room.match.round) fail('回合已更新。');
             room.job = resumeRound(room.job, session.id, body.requestId, body.answer); clearTimeout(room.timer); progress(room); break;
           }
