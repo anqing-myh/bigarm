@@ -1,4 +1,5 @@
 // Presentation helpers only. The rules engine remains the authority for legality and damage.
+export function statusRound(room) { return room.round + (['reveal', 'finished'].includes(room.phase) ? 1 : 0); }
 export const PINYIN = Object.freeze({
   basicB: 'da bi', basicZ: 'zan', basicF: 'fang dun', basicY: 'yuan dun', basicS: 'shan', basicC: 'chao shan',
   punch: 'quan', kick: 'chuai', ber: 'ber', knife: 'dao', wave: 'hai lang', torch: 'huo ju', tsunami: 'hai xiao',

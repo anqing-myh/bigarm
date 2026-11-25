@@ -17,10 +17,10 @@ test('formal YAML review list covers every move with the same names and spell cl
 
 test('YAML export records independent components instead of equating magic damage with spells', () => {
   const doc = catalogDocument();
-  assert.equal(doc.moves.phoenix.is_spell, true); assert.equal(doc.moves.sunPunch.is_spell, false);
-  assert.equal(doc.moves.fireWheel.is_spell, true); assert.equal(doc.moves.upheaval.is_spell, true);
+  assert.equal(doc.moves.phoenix.is_spell, false); assert.equal(doc.moves.sunPunch.is_spell, false);
+  assert.equal(doc.moves.fireWheel.is_spell, false); assert.equal(doc.moves.upheaval.is_spell, false);
   assert.equal(doc.moves.hammer3.independent_spell_components[0].cancelled_by_hammer, false);
-  assert.equal(doc.moves.ghostDodge.independent_spell_components[0].start_offset, 1);
+  assert.equal(doc.moves.ghostDodge.independent_spell_components[0].start_offset, 0);
   assert.equal(doc.moves.crucio.independent_spell_components[0].duration_rounds, 15);
   assert.deepEqual(doc.moves.ghostArrows.cost.inventory, { ghostDodge: 2 });
   assert.deepEqual(doc.moves.ghost.cost.real_shields, { foam: 2 });

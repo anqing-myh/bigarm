@@ -1,7 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MOVES, createPlayer, createMatch, availableMoves } from '../rules/engine.js';
-import { PINYIN, matchesMove, searchMoves, blessingLimit, blessingTotal, combatChanges } from '../public/interaction.js';
+import { PINYIN, matchesMove, searchMoves, blessingLimit, blessingTotal, combatChanges, statusRound } from '../public/interaction.js';
+
+test('remaining status time uses the next round during completed-round reveal', () => {
+  const effect = { start: 1, end: 2 };
+  const remaining = room => Math.max(0, effect.end - statusRound(room) + 1);
+  assert.equal(remaining({ phase: 'choice', round: 1 }), 2);
+  assert.equal(remaining({ phase: 'reveal', round: 1 }), 1);
+  assert.equal(remaining({ phase: 'selecting', round: 2 }), 1);
+  assert.equal(remaining({ phase: 'reveal', round: 2 }), 0);
+});
 
 test('every current move can be found by Chinese, pinyin and initials', () => {
   for (const m of Object.values(MOVES)) {

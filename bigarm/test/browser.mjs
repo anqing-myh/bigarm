@@ -221,6 +221,7 @@ try {
   await v2.locator('.own-effects .negative').waitFor();
   assert.ok((await v2.locator('.own-effects').innerText()).includes('钻心咒'));
   assert.ok((await v2.locator('.own-effects').innerText()).includes('幽灵闪'));
+  assert.ok((await v2.locator('.own-effects').innerText()).includes('幽灵闪 · 1'), 'cast round already counted; only one round remains');
   assert.ok(await v2.locator('[data-id=basicS]').evaluate(e => e.classList.contains('cursed-dodge')));
   assert.ok(await v2.locator('[data-id=basicC]').evaluate(e => e.classList.contains('cursed-dodge')));
   await battlefieldFits(v2); await v2.screenshot({ path: 'test-results/v2-status-mobile.png', fullPage: true });

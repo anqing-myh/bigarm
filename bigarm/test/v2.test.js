@@ -117,34 +117,34 @@ test('V2 cost-sensitive immunity and clashes use actual stock cost rather than p
   assert.equal(damage(j, 'b'), 6); assert.equal(damage(j, 'a'), 0, 'ghost stock is not an actual B payment for knife-point clash');
 });
 
-test('V2 stock must be earned before it is spent; spells start next round; spending stock preserves effects', () => {
+test('V2 stock must be earned before it is spent; dodge duration includes cast round; stock and status expiry are separate', () => {
   const input = state(); input.players[0].resources.ghostDodge = 0;
   assert.throws(() => validateAction(input, 'a', action('ghostArrows')), /幽灵闪不足/);
   assert.ok(!availableMoves(input, 'a').some(m => m.id === 'ghostArrows'));
   let j = battle(input, { a: action('ghostDodge'), b: action('punch', 'a') });
-  assert.equal(damage(j, 'a'), 1, 'no same-turn C defense');
+  assert.equal(damage(j, 'a'), 0, 'same-turn C defense is active');
   assert.equal(get(j, 'a').resources.ghostDodge, 1);
-  assert.deepEqual(get(j, 'a').effects.map(e => [e.name, e.start, e.end]), [['幽灵闪', 2, 3]]);
+  assert.deepEqual(get(j, 'a').effects.map(e => [e.name, e.start, e.end]), [['幽灵闪', 1, 2]]);
   j = battle(j.state, { a: action('ghostDodge'), b: action('punch', 'a') });
   assert.equal(damage(j, 'a'), 0); assert.equal(get(j, 'a').effects.length, 1, 'same spell refreshes');
-  assert.equal(get(j, 'a').effects[0].end, 4); assert.equal(get(j, 'a').resources.ghostDodge, 2);
+  assert.equal(get(j, 'a').effects[0].end, 3); assert.equal(get(j, 'a').resources.ghostDodge, 2);
   const base = get(j, 'a').resources.B;
   j = battle(j.state, { a: action('ghostArrows'), b: action('basicB') });
   assert.equal(damage(j, 'b'), 2); assert.equal(get(j, 'a').resources.ghostDodge, 0);
   assert.equal(get(j, 'a').resources.B, base, 'tokens are not expanded into a second base-resource cost');
-  assert.ok(get(j, 'a').effects.some(e => e.move === 'ghostDodge'));
+  assert.ok(!get(j, 'a').effects.some(e => e.move === 'ghostDodge'), 'expires after round 3, not removed early by stock cost');
   assert.equal(MOVES.ghostArrows.power, 160); assert.equal(MOVES.ghostFinisher.power, 175);
 });
 
-test('V2 ghost sword checks spell components; ghost finisher checks nonbasic action identity', () => {
-  for (const move of ['basicZ', 'ghostDodge', 'heal', 'hammer3']) {
+test('V2 ghost sword checks pure spell action classification; ghost finisher checks nonbasic action identity', () => {
+  for (const move of ['basicZ', 'ghostDodge', 'heal']) {
     const j = battle(state(p('a'), p('b'), p('c')), { a: action('ghostSword', 'b'), b: action(move, 'c'), c: action('basicB') });
     assert.equal(damage(j, 'b'), 0, move);
     assert.equal(j.lifeLoss.find(e => e.target === 'a').amount, 1);
   }
   const j = battle(state(p('a'), p('b'), p('c')), { a: action('ghostSword', 'b'), b: action('sunPunch', 'c'), c: action('basicB') });
   assert.equal(damage(j, 'b'), 6, 'magic damage alone is not a spell component');
-  assert.equal(MOVES.phoenix.hasSpell, true); assert.equal(MOVES.sunPunch.hasSpell, false);
+  assert.equal(MOVES.phoenix.hasSpell, false); assert.equal(MOVES.sunPunch.hasSpell, false);
   for (const move of ['basicB', 'basicZ', 'basicF', 'basicY', 'basicS', 'basicC']) {
     const result = battle(state(), { a: action('ghostFinisher', 'b'), b: action(move) });
     assert.equal(damage(result, 'b'), 1, move);
@@ -225,14 +225,32 @@ test('V2 choice continuations do not repeat life loss or award move stock twice'
   assert.equal(get(j, 'a').resources.ghostSword, 31); assert.equal(j.lifeLoss.length, 1);
 });
 
-test('V2 delayed spell effects can overlap by name without stacking the same condition', () => {
-  let j = battle(state(), { a: action('ghostDodge'), b: action('basicB') });
-  j = battle(j.state, { a: action('voidDodge'), b: action('punch', 'a') });
-  assert.equal(damage(j, 'a'), 0, 'old ghost defense remains while new void is pending');
-  assert.ok(get(j, 'a').effects.some(e => e.move === 'ghostDodge'));
-  assert.equal(get(j, 'a').effects.filter(e => e.move === 'voidDodge').length, 2);
+test('V2 dodge durations include casting round; void scope outlasts its one-round C defense', () => {
+  for (const [move, duration] of [['ghostDodge', 2], ['chainDodge', 3]]) {
+    let j = battle(state(), { a: action(move), b: action('punch', 'a') });
+    assert.equal(damage(j, 'a'), 0, move);
+    for (let round = 2; round <= duration; round++) {
+      j = battle(j.state, { a: action('basicB'), b: action('punch', 'a') });
+      assert.equal(damage(j, 'a'), 0, `${move} round ${round}`);
+    }
+    assert.equal(get(j, 'a').effects.length, 0);
+    j = battle(j.state, { a: action('basicB'), b: action('punch', 'a') });
+    assert.equal(damage(j, 'a'), 1, 'expires exactly at the boundary');
+  }
+  let j = battle(state(), { a: action('voidDodge'), b: action('wave') });
+  assert.equal(damage(j, 'a'), 0, 'cast-round C blocks group');
   j = battle(j.state, { a: action('basicB'), b: action('wave') });
-  assert.equal(damage(j, 'a'), 0, 'next-round void C can defend a group attack');
-  j = battle(j.state, { a: action('basicB'), b: action('wave') });
-  assert.equal(damage(j, 'a'), 1, 'later scope immunity alone cannot stop group attacks');
+  assert.equal(damage(j, 'a'), 1, 'next round has scope immunity but no C');
+  j = battle(j.state, { a: action('basicB'), b: action('punch', 'a') });
+  assert.equal(damage(j, 'a'), 0, 'scope still covers round 3');
+  assert.equal(get(j, 'a').effects.length, 0);
+  j = battle(j.state, { a: action('basicB'), b: action('punch', 'a') });
+  assert.equal(damage(j, 'a'), 1, 'scope expires after round 3');
+});
+
+test('V2 only pure spell/auxiliary actions grant spell defense; attack spell components still execute', () => {
+  for (const m of Object.values(MOVES)) assert.equal(m.hasSpell, m.type === 'spell', m.id);
+  const j = battle(state(p('a'), p('b'), p('c')), { a: action('ghostSword', 'b'), b: action('hammer3', 'c'), c: action('heal') });
+  assert.equal(damage(j, 'b'), 6, 'hammer is an attack and cannot grant spell defense');
+  assert.ok(j.cancelledSpells.includes('c'), 'hammer independent control still executes');
 });

@@ -73,9 +73,9 @@ shield('radar', '雷达', 'ZZZYYY', 'radar', 2, { electric: true, immuneAll: tru
 
 add('shock', '小电', 'spell', 'CC', { target: 'single', spell: 'shock', immunity: 2 });
 add('phoenixGuard', '凤之守护', 'spell', 'Q', { immunity: 2, controlImmunity: 2 });
-add('ghostDodge', '幽灵闪', 'spell', 'BFYC', { spell: 'defense', defense: 'C', duration: 2 });
-add('chainDodge', '连环闪', 'spell', 'SSC', { spell: 'defense', defense: 'S', duration: 3 });
-add('voidDodge', '虚无闪', 'spell', 'FYSC', { spell: 'void' });
+add('ghostDodge', '幽灵闪', 'spell', 'BFYC', { spell: 'defense', defense: 'C', duration: 2, statusStartOffset: 0 });
+add('chainDodge', '连环闪', 'spell', 'SSC', { spell: 'defense', defense: 'S', duration: 3, statusStartOffset: 0 });
+add('voidDodge', '虚无闪', 'spell', 'FYSC', { spell: 'void', statusStartOffset: 0 });
 add('thunderDodge', '雷闪', 'spell', 'CCC', { immunity: 2, controlImmunity: 2 });
 add('heal', '回一滴血', 'spell', 'CCC', { spell: 'heal' });
 add('guardSix', '防六拳合一', 'spell', '', { spell: 'guardSix' });
@@ -99,8 +99,8 @@ export const RESOURCE_NAMES = Object.freeze(resourceNames);
 export const WEIGHTS = Object.freeze(weights);
 
 for (const move of Object.values(moves)) {
-  // A spell component and a magic attack are separate concepts.
-  move.hasSpell ??= move.type === 'spell' || !!move.spell || !!move.onHit;
+  // Only pure spell/auxiliary actions grant spell defense; contained components remain independent.
+  move.hasSpell = move.type === 'spell';
   move.power ??= Object.entries(move.cost).reduce((sum, [key, n]) => sum + WEIGHTS[key] * n, 0);
   move.description ??= move.type === 'attack'
     ? `${move.attribute === 'magic' ? '法术' : '物理'}攻击 · ${move.power / 10} 点 · ${move.damage.join('＋')} 伤害${move.duration ? ` · 持续 ${move.duration} 回合` : ''}`
@@ -113,4 +113,4 @@ for (const move of Object.values(moves)) {
 for (const def of Object.values(equipment)) Object.freeze(def);
 export const MOVES = Object.freeze(moves);
 export const EQUIPMENT = Object.freeze(equipment);
-export const RULE_VERSION = '2026-11-24';
+export const RULE_VERSION = '2026-11-25';

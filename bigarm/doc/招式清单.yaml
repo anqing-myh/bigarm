@@ -1,11 +1,11 @@
 # 大臂招式清单：is_spell 是供人工审阅的法术分类。
 # 本表不随启动/测试自动覆盖；新增机制和招式须同步维护。
 schema_version: 2
-rule_version: "2026-11-24"
+rule_version: "2026-11-25"
 scope: "当前全部启用招式，新增或修改招式时一并维护；原始 v2-招式.md 保留供以后补充"
 editing: "可直接修改、批注本表供后续调整。游戏当前读取 rules/catalog.js；修改本表后须同步代码。启动和测试不会自动覆盖本文件。"
 classification:
-  is_spell: "行动是否含法术效果，用于“Z或法术防”；与 attack.attribute=magic 不同。当前火轮、天翻地覆的命中附带效果列为法术，等待人工审阅时可修改。"
+  is_spell: "仅 category=spell 的纯法术/辅助行动为真；攻击即使含独立法术或命中效果组件也为假，此分类不删除其法术组件。"
   spell_cancellation: "锤锤锤只取消本回合新施放的普通独立法术及其招式库存收益；固有防护、旧状态、攻击伤害和命中回调保留。"
   actual_cost_membership: "元素盾和刀点刀检查实际库存成本键，不把计算资源价值时的递归展开另算作实际 B/Z/F/Y/S/C 成本。"
   basic_resource_aliases:
@@ -16,7 +16,11 @@ classification:
     S: "闪"
     C: "超闪"
     Q: "祝福值"
-  recurring_status_start_offset: 1
+  recurring_status_start_offset:
+    default: 1
+    ghostDodge: 0
+    chainDodge: 0
+    voidDodge: 0
 resources:
   B:
     name: "大臂"
@@ -368,7 +372,7 @@ moves:
     name: "大臂"
     category: "basic"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields: {}
@@ -398,7 +402,7 @@ moves:
     name: "攒"
     category: "basic"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields: {}
@@ -428,7 +432,7 @@ moves:
     name: "方盾"
     category: "basic"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields: {}
@@ -458,7 +462,7 @@ moves:
     name: "圆盾"
     category: "basic"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields: {}
@@ -488,7 +492,7 @@ moves:
     name: "闪"
     category: "basic"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields: {}
@@ -518,7 +522,7 @@ moves:
     name: "超闪"
     category: "basic"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields: {}
@@ -548,7 +552,7 @@ moves:
     name: "拳"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -614,7 +618,7 @@ moves:
     name: "踹"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -681,7 +685,7 @@ moves:
     name: "ber"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Z: 1
@@ -747,7 +751,7 @@ moves:
     name: "刀"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 1
@@ -814,7 +818,7 @@ moves:
     name: "海浪"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 2
@@ -879,7 +883,7 @@ moves:
     name: "火炬"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Y: 1
@@ -946,7 +950,7 @@ moves:
     name: "海啸"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 3
@@ -1011,8 +1015,8 @@ moves:
   fireWheel:
     name: "火轮"
     category: "attack"
-    is_spell: true
-    spell_classification_note: "攻击带有命中附带效果；此处将其列为含法术效果，供人工复核"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Y: 2
@@ -1086,7 +1090,7 @@ moves:
     name: "万箭齐发"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         S: 2
@@ -1153,7 +1157,7 @@ moves:
     name: "小海波"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 1
@@ -1219,7 +1223,7 @@ moves:
     name: "镖"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 1
@@ -1284,7 +1288,7 @@ moves:
     name: "小火轮"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Y: 1
@@ -1350,7 +1354,7 @@ moves:
     name: "地震"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         S: 3
@@ -1418,7 +1422,7 @@ moves:
     name: "三连踹"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 2
@@ -1485,7 +1489,7 @@ moves:
     name: "太阳拳"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 2
@@ -1553,7 +1557,7 @@ moves:
     name: "连环拳"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 5
@@ -1617,7 +1621,7 @@ moves:
     name: "青龙剑"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 2
@@ -1684,7 +1688,7 @@ moves:
     name: "刀点刀"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -1749,7 +1753,7 @@ moves:
     name: "镰刀"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Z: 2
@@ -1817,7 +1821,7 @@ moves:
     name: "六拳合一"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 4
@@ -1883,7 +1887,7 @@ moves:
     name: "回旋镖"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 3
@@ -1949,7 +1953,7 @@ moves:
     name: "冲天炮"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -2016,7 +2020,7 @@ moves:
     name: "冲天钻"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -2083,7 +2087,7 @@ moves:
     name: "青龙偃月刀"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 3
@@ -2149,8 +2153,8 @@ moves:
   phoenix:
     name: "凤鸣九天"
     category: "attack"
-    is_spell: true
-    spell_classification_note: "攻击带有独立法术组件"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -2227,7 +2231,7 @@ moves:
     name: "凤之烈焰"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Q: 2
@@ -2295,7 +2299,7 @@ moves:
     name: "凤之长星"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Q: 2
@@ -2361,7 +2365,7 @@ moves:
     name: "流星锤"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 5
@@ -2432,7 +2436,7 @@ moves:
     name: "少林棍"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Y: 5
@@ -2500,7 +2504,7 @@ moves:
     name: "剑"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 2
@@ -2566,8 +2570,8 @@ moves:
   upheaval:
     name: "天翻地覆"
     category: "attack"
-    is_spell: true
-    spell_classification_note: "攻击带有命中附带效果；此处将其列为含法术效果，供人工复核"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -2643,7 +2647,7 @@ moves:
     name: "均衡之刃"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -2717,7 +2721,7 @@ moves:
     name: "枪"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Z: 1
@@ -2780,7 +2784,7 @@ moves:
     name: "飞刀"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         S: 1
@@ -2845,7 +2849,7 @@ moves:
     name: "穿云箭"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 2
@@ -2912,7 +2916,7 @@ moves:
     name: "拳打脚踢"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 3
@@ -2981,7 +2985,7 @@ moves:
     name: "弧光"
     category: "attack"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -3048,8 +3052,8 @@ moves:
   hammer3:
     name: "锤锤锤"
     category: "attack"
-    is_spell: true
-    spell_classification_note: "攻击带有独立法术组件"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -3129,7 +3133,7 @@ moves:
     name: "幽灵万箭齐发"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         ghostDodge: 2
@@ -3194,7 +3198,7 @@ moves:
     name: "幽灵毁灭之剑"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         ghostDodge: 2
@@ -3258,7 +3262,7 @@ moves:
     name: "幽灵必杀"
     category: "attack"
     is_spell: false
-    spell_classification_note: "仅法术伤害属性，没有法术效果组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         ghostDodge: 1
@@ -3322,7 +3326,7 @@ moves:
     name: "泡沫盾"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -3360,7 +3364,7 @@ moves:
     name: "幽灵盾"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory: {}
       real_shields:
@@ -3400,7 +3404,7 @@ moves:
     name: "闪电盾"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -3439,7 +3443,7 @@ moves:
     name: "雷电盾"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 1
@@ -3478,7 +3482,7 @@ moves:
     name: "海神盾"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Z: 3
@@ -3517,7 +3521,7 @@ moves:
     name: "烈焰盾"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 3
@@ -3557,7 +3561,7 @@ moves:
     name: "大臂生产器"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         B: 5
@@ -3595,7 +3599,7 @@ moves:
     name: "攒攒生产器"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Z: 5
@@ -3633,7 +3637,7 @@ moves:
     name: "方盾生产器"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         F: 5
@@ -3671,7 +3675,7 @@ moves:
     name: "圆盾生产器"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Y: 5
@@ -3709,7 +3713,7 @@ moves:
     name: "雷达"
     category: "equipment"
     is_spell: false
-    spell_classification_note: "基础动作、物理攻击或装备制造，没有法术组件"
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
       inventory:
         Z: 3
@@ -3748,7 +3752,7 @@ moves:
     name: "小电"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         C: 2
@@ -3787,7 +3791,7 @@ moves:
     name: "凤之守护"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         Q: 1
@@ -3818,7 +3822,7 @@ moves:
     name: "幽灵闪"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         B: 1
@@ -3852,7 +3856,7 @@ moves:
         status: "ghostDodge"
         positive: true
         defense: "C"
-        start_offset: 1
+        start_offset: 0
         duration_rounds: 2
         refresh: "same_move_and_component_keep_earliest_start_and_latest_end"
     on_hit: null
@@ -3863,7 +3867,7 @@ moves:
     name: "连环闪"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         S: 2
@@ -3895,7 +3899,7 @@ moves:
         status: "chainDodge"
         positive: true
         defense: "S"
-        start_offset: 1
+        start_offset: 0
         duration_rounds: 3
         refresh: "same_move_and_component_keep_earliest_start_and_latest_end"
     on_hit: null
@@ -3906,7 +3910,7 @@ moves:
     name: "虚无闪"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         F: 1
@@ -3940,7 +3944,7 @@ moves:
         status: "voidDodge"
         positive: true
         defense: "C"
-        start_offset: 1
+        start_offset: 0
         duration_rounds: 1
         refresh: "max_remaining_duration"
       -
@@ -3954,7 +3958,7 @@ moves:
           - "single"
           - "dual"
           - "splash"
-        start_offset: 1
+        start_offset: 0
         duration_rounds: 3
         refresh: "max_remaining_duration"
     on_hit: null
@@ -3965,7 +3969,7 @@ moves:
     name: "雷闪"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         C: 3
@@ -3996,7 +4000,7 @@ moves:
     name: "回一滴血"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         C: 3
@@ -4034,7 +4038,7 @@ moves:
     name: "防六拳合一"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory: {}
       real_shields: {}
@@ -4072,7 +4076,7 @@ moves:
     name: "阿西吧"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         C: 1
@@ -4103,7 +4107,7 @@ moves:
     name: "钻心咒"
     category: "spell"
     is_spell: true
-    spell_classification_note: "法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录"
+    spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
       inventory:
         C: 5

@@ -246,10 +246,11 @@ function advance(job) {
       }
       if (m.spell === 'blessing') { p.resources.Q += 3; log(job, 'gain', `${p.name} 获得 3 祝福值。`); }
       if (m.spell === 'heal') { const amount = Math.min(1, p.maxHp - p.hp); p.hp += amount; log(job, 'heal', `${p.name} 恢复 ${amount} 生命。`); }
-      if (m.spell === 'defense') addEffect(job, p, m.id, 'defense', m.defense, t + 1, t + m.duration);
+      const statusStart = t + (m.statusStartOffset ?? 1);
+      if (m.spell === 'defense') addEffect(job, p, m.id, 'defense', m.defense, statusStart, statusStart + m.duration - 1);
       if (m.spell === 'void') {
-        addEffect(job, p, m.id, 'defense', 'C', t + 1, t + 1);
-        addEffect(job, p, m.id, 'scope', null, t + 1, t + 3);
+        addEffect(job, p, m.id, 'defense', 'C', statusStart, statusStart);
+        addEffect(job, p, m.id, 'scope', null, statusStart, statusStart + 2);
       }
       if (m.spell === 'curse') {
         const target = player(job.state, a.targets[0]);

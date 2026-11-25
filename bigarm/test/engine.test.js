@@ -185,9 +185,8 @@ test('seats determine results regardless of player input order; status expiry an
   const s = state(p('a'), p('b'), p('c')), actions = { a: a('wave'), b: a('punch', 'a'), c: a('basicB') };
   const expected = battle(s, actions), reversed = clone(s); reversed.players.reverse();
   assert.deepEqual(battle(reversed, actions), expected);
-  let j = pair(a('voidDodge'), a('basicB')); assert.equal(get(j, 'a').effects.filter(e => e.kind === 'defense').length, 1); assert.equal(get(j, 'a').effects.find(e => e.kind === 'scope').end, 4);
+  let j = pair(a('voidDodge'), a('basicB')); assert.equal(get(j, 'a').effects.filter(e => e.kind === 'defense').length, 0); assert.equal(get(j, 'a').effects.find(e => e.kind === 'scope').end, 3);
   j = battle(j.state, { a: a('basicB'), b: a('basicB') });
-  j = battle(j.state, { a: a('basicB'), b: a('basicB') }); assert.equal(get(j, 'a').effects.length, 1);
   j = battle(j.state, { a: a('basicB'), b: a('basicB') }); assert.equal(get(j, 'a').effects.length, 0);
   const x = createPlayer('__proto__', '特殊身份', 0), y = createPlayer('other', '其他', 1);
   const job = beginRound(createMatch([x, y]), Object.fromEntries([['__proto__', { move: 'basicB' }], ['other', { move: 'basicB' }]]));

@@ -1,5 +1,5 @@
 import { MOVES, EQUIPMENT, RESOURCE_NAMES, BASE_RESOURCE_NAMES, availableMoves } from '/rules/engine.js';
-import { searchMoves, blessingTotal, blessingLimit, combatChanges } from '/interaction.js';
+import { searchMoves, blessingTotal, blessingLimit, combatChanges, statusRound } from '/interaction.js';
 
 const $ = selector => document.querySelector(selector);
 const app = $('#app'), modal = $('#modal'), modalContent = $('#modal-content');
@@ -9,8 +9,8 @@ const ui = { move: 'basicB', targets: [], search: '', direction: 'clockwise', bl
 let composing = false, feedback = [], feedbackId = 0, feedbackTimer;
 const spellDescriptions = {
   shock: '指定另一名玩家，移除一件可被小电移除的装备，由受术者选择。自己本回合 2 级免伤。',
-  phoenixGuard: '本回合获得 2 级免伤与 2 级免控。', ghostDodge: '从下一回合起连续 2 回合拥有超闪防法；不获得基础超闪，但获得一个幽灵闪招式资源。',
-  chainDodge: '从下一回合起连续 3 回合拥有闪防法，不计入基础闪避连续次数。', voidDodge: '下一回合拥有超闪防法；从下一回合起连续 3 回合免疫单体、双目标和溅射，包括回旋镖。普通群攻仍需其他防护。',
+  phoenixGuard: '本回合获得 2 级免伤与 2 级免控。', ghostDodge: '使用当回合及下回合拥有超闪防法，共 2 回合；不获得基础超闪，但获得一个幽灵闪招式资源。',
+  chainDodge: '使用当回合及后两回合拥有闪防法，共 3 回合，不计入基础闪避连续次数。', voidDodge: '仅使用当回合拥有超闪防法；当回合及后两回合免疫单体、双目标和溅射，共 3 回合，包括回旋镖。普通群攻仍需其他防护。',
   thunderDodge: '本回合获得 2 级免伤与 2 级免控。', heal: '在攻击前恢复自己 1 生命，先按生命上限截顶。', guardSix: '免费防住本回合六拳合一；不获得基础资源，但获得一个同名招式资源。',
   axi: '回合最开始流失 1 体力，不能免疫或用祝福减免；本回合优先无敌（2 级免伤、2 级免控）。',
   crucio: '指定另一名玩家，施加 1 级有害控制。从下一回合起持续 15 回合：实际选择基础闪或超闪时，在回合最开始流失 2 体力。重复施加刷新时长，不叠加流失量。',
@@ -30,7 +30,7 @@ const specialDescriptions = {
   arcLight: '参与互攻时点数高低关系反转，等点仍抵消；不改变伤害排序，也不反转特殊克制。',
   hammer3: '最开始独立施加 2 级禁法，取消目标本回合新施放的普通法术及其招式资源收益，不依赖攻击命中。锤锤锤本身不被禁法取消，固有防护、旧状态、法术伤害和命中回调保留。',
   ghostArrows: '消耗 2 个已积存的幽灵闪招式资源，不消耗基础资源或已有闪避状态。群体 2 法术伤害，穿泡级。',
-  ghostSword: '消耗 2 个幽灵闪招式资源；回合最开始自己流失 1 体力。基础攒或含法术效果的行动可防，单纯法术攻击不算含法术效果。',
+  ghostSword: '消耗 2 个幽灵闪招式资源；回合最开始自己流失 1 体力。基础攒或纯法术/辅助行动可防，单纯法术攻击不算含法术效果。',
   ghostFinisher: '消耗 1 个幽灵闪和 1 个虚无闪招式资源。真伤，任何非基础行动可防；基础闪和超闪不能直接防住。',
 };
 function describe(m) {
@@ -82,7 +82,7 @@ function lobby() {
 const nameOf = id => data.room.players.find(p => p.id === id)?.name || '玩家';
 function statuses(room, p) {
   const grouped = new Map();
-  for (const e of p.effects.filter(e => e.end >= room.round)) {
+  for (const e of p.effects.filter(e => e.end >= statusRound(room))) {
     const key = e.move || e.id, previous = grouped.get(key);
     const status = { name: e.name || MOVES[e.move]?.name || (e.kind === 'defense' ? `${BASE_RESOURCE_NAMES[e.value]}防法` : '范围免疫'), start: e.start, end: e.end, positive: e.positive !== false };
     if (previous) { previous.start = Math.min(previous.start, e.start); previous.end = Math.max(previous.end, e.end); }
@@ -91,7 +91,7 @@ function statuses(room, p) {
   return [...grouped.values()];
 }
 function statusBadges(room, p) {
-  return statuses(room, p).map(e => `<span class="status-effect ${e.positive ? 'positive' : 'negative'}" title="${esc(e.name)} · 第${e.start}～${e.end}回合">${esc(e.name)}${e.start > room.round ? ' · 待生效' : ' · ' + (e.end - room.round + 1)}</span>`).join('');
+  return statuses(room, p).map(e => `<span class="status-effect ${e.positive ? 'positive' : 'negative'}" title="${esc(e.name)} · 第${e.start}～${e.end}回合">${esc(e.name)}${e.start > statusRound(room) ? ' · 待生效' : ' · ' + (e.end - statusRound(room) + 1)}</span>`).join('');
 }
 function stockEntries(p) { return Object.entries(RESOURCE_NAMES).filter(([id]) => !Object.hasOwn(BASE_RESOURCE_NAMES, id) && p.resources[id] > 0); }
 function showStock(id = data.self.id) {
@@ -121,7 +121,7 @@ function seats(room) {
 }
 function detail(m) {
   if (!m) return '';
-  return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p>${esc(describe(m))}</p>${m.type === 'attack' ? `<div class="detail-stats"><span>${m.target === 'dual' ? '7.5 / 单目标15' : m.target === 'path' ? '3、4、5…' : m.power / 10} 点</span><span>${({ single: '单目标', all: '其他所有存活者', dual: '一至两个目标', splash: '主目标及存活邻居', path: '方向路径单体' })[m.target]}</span><span>${m.air ? '可对空' : '不对空'}</span><span>防法：${m.guardRule === 'exceptDodgeAction' ? '除基础闪、超闪外的任意行动' : m.guardRule === 'ZOrSpell' ? '基础攒或含法术效果的行动' : m.guardRule === 'nonBasicAction' ? '任意非基础行动' : m.id === 'balance' ? '任意非基础行动' : m.id === 'sixFists' ? '防六拳合一及适用免疫' : [...m.guard].map(k => RESOURCE_NAMES[k]).join(' / ') || '无基础防法'}</span>${m.pierce?.length ? `<span>穿透：${m.pierce.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}${m.ignore?.length ? `<span>无视：${m.ignore.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}</div>` : ''}`;
+  return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p>${esc(describe(m))}</p>${m.type === 'attack' ? `<div class="detail-stats"><span>${m.target === 'dual' ? '7.5 / 单目标15' : m.target === 'path' ? '3、4、5…' : m.power / 10} 点</span><span>${({ single: '单目标', all: '其他所有存活者', dual: '一至两个目标', splash: '主目标及存活邻居', path: '方向路径单体' })[m.target]}</span><span>${m.air ? '可对空' : '不对空'}</span><span>防法：${m.guardRule === 'exceptDodgeAction' ? '除基础闪、超闪外的任意行动' : m.guardRule === 'ZOrSpell' ? '基础攒或纯法术/辅助行动' : m.guardRule === 'nonBasicAction' ? '任意非基础行动' : m.id === 'balance' ? '任意非基础行动' : m.id === 'sixFists' ? '防六拳合一及适用免疫' : [...m.guard].map(k => RESOURCE_NAMES[k]).join(' / ') || '无基础防法'}</span>${m.pierce?.length ? `<span>穿透：${m.pierce.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}${m.ignore?.length ? `<span>无视：${m.ignore.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}</div>` : ''}`;
 }
 function choicePanel(room) {
   const c = room.pending, mine = c.playerId === data.self.id;

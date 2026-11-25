@@ -10,10 +10,10 @@ function spellComponents(m) {
   if (m.spell === 'blessing') return [{ ...common, kind: 'gain_resource', target: 'self', resource: 'Q', amount: 3, requires_hit: false }];
   if (m.spell === 'heal') return [{ ...common, kind: 'heal', target: 'self', amount: 1, cap_before_attacks: true }];
   if (m.spell === 'guardSix') return [{ ...common, kind: 'guard_move', target: 'self', move: 'sixFists', duration_rounds: 1, start_offset: 0 }];
-  if (m.spell === 'defense') return [{ ...common, kind: 'named_status', target: 'self', status: m.id, positive: true, defense: m.defense, start_offset: 1, duration_rounds: m.duration, refresh: 'same_move_and_component_keep_earliest_start_and_latest_end' }];
+  if (m.spell === 'defense') return [{ ...common, kind: 'named_status', target: 'self', status: m.id, positive: true, defense: m.defense, start_offset: m.statusStartOffset ?? 1, duration_rounds: m.duration, refresh: 'same_move_and_component_keep_earliest_start_and_latest_end' }];
   if (m.spell === 'void') return [
-    { ...common, kind: 'named_status', target: 'self', status: m.id, positive: true, defense: 'C', start_offset: 1, duration_rounds: 1, refresh: 'max_remaining_duration' },
-    { ...common, kind: 'named_status', target: 'self', status: m.id, positive: true, immune_scopes: ['single', 'dual', 'splash'], start_offset: 1, duration_rounds: 3, refresh: 'max_remaining_duration' },
+    { ...common, kind: 'named_status', target: 'self', status: m.id, positive: true, defense: 'C', start_offset: m.statusStartOffset ?? 1, duration_rounds: 1, refresh: 'max_remaining_duration' },
+    { ...common, kind: 'named_status', target: 'self', status: m.id, positive: true, immune_scopes: ['single', 'dual', 'splash'], start_offset: m.statusStartOffset ?? 1, duration_rounds: 3, refresh: 'max_remaining_duration' },
   ];
   if (m.spell === 'curse') return [{ ...common, kind: 'named_status', target: 'selected_opponent', level: 1, status: m.id, positive: false, start_offset: 1, duration_rounds: 15, refresh: 'max_remaining_duration_not_multiple_stacks', on_action: { actual_basic_resources: ['S', 'C'], stage: 'R1a', life_loss: 2, damage: false, preventable: false } }];
   return [];
@@ -23,11 +23,7 @@ export function catalogDocument() {
   const entries = {};
   for (const m of Object.values(MOVES)) {
     const materialCost = m.materials || {};
-    const classification = m.type === 'spell' ? '法术或辅助法术行动；固有防护与可取消的法术组件仍分别记录'
-      : m.spell ? '攻击带有独立法术组件'
-      : m.onHit ? '攻击带有命中附带效果；此处将其列为含法术效果，供人工复核'
-      : m.attribute === 'magic' ? '仅法术伤害属性，没有法术效果组件'
-      : '基础动作、物理攻击或装备制造，没有法术组件';
+    const classification = m.type === 'spell' ? '纯法术/辅助行动，算法术' : '非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件';
     entries[m.id] = {
       name: m.name,
       category: m.type,
@@ -65,7 +61,7 @@ export function catalogDocument() {
     rule_version: RULE_VERSION,
     scope: '当前全部启用招式，新增或修改招式时一并维护；原始 v2-招式.md 保留供以后补充',
     editing: '可直接修改、批注本表供后续调整。游戏当前读取 rules/catalog.js；修改本表后须同步代码。启动和测试不会自动覆盖本文件。',
-    classification: { is_spell: '行动是否含法术效果，用于“Z或法术防”；与 attack.attribute=magic 不同。当前火轮、天翻地覆的命中附带效果列为法术，等待人工审阅时可修改。', spell_cancellation: '锤锤锤只取消本回合新施放的普通独立法术及其招式库存收益；固有防护、旧状态、攻击伤害和命中回调保留。', actual_cost_membership: '元素盾和刀点刀检查实际库存成本键，不把计算资源价值时的递归展开另算作实际 B/Z/F/Y/S/C 成本。', basic_resource_aliases: BASE_RESOURCE_NAMES, recurring_status_start_offset: 1 },
+    classification: { is_spell: '仅 category=spell 的纯法术/辅助行动为真；攻击即使含独立法术或命中效果组件也为假，此分类不删除其法术组件。', spell_cancellation: '锤锤锤只取消本回合新施放的普通独立法术及其招式库存收益；固有防护、旧状态、攻击伤害和命中回调保留。', actual_cost_membership: '元素盾和刀点刀检查实际库存成本键，不把计算资源价值时的递归展开另算作实际 B/Z/F/Y/S/C 成本。', basic_resource_aliases: BASE_RESOURCE_NAMES, recurring_status_start_offset: { default: 1, ghostDodge: 0, chainDodge: 0, voidDodge: 0 } },
     resources: Object.fromEntries(Object.entries(RESOURCE_NAMES).map(([id, name]) => [id, { name, value_points: WEIGHTS[id] / 10, storage: Object.hasOwn(BASE_RESOURCE_NAMES, id) ? 'base_inventory' : 'move_inventory', real_shield: false }])),
     moves: entries,
   };
