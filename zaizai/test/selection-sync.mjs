@@ -99,6 +99,24 @@ try{
       await a.locator('#reflect-select').selectOption('fireball');
       await a.locator('#reflect-select').focus();
       await snapshot(a);
+      // Incoming messages and their expiry must not replace the focused native select.
+      const sent=await post(b,'/game/emote',{text:'干得漂亮！'});
+      assert.equal(sent.status,200);
+      await a.locator('.emote-layer .emote-bubble').waitFor();
+      await stable(a,{select:true});
+      await a.locator('.emote-layer .emote-bubble').waitFor({state:'detached'});
+      await stable(a,{select:true});
+      assert.equal(await a.locator('#reflect-select').inputValue(),'fireball','表情过期不改变反弹选项');
+      await a.locator('[data-act=toggle-emote-menu]').click();
+      await a.locator('[data-act=send-emote]').first().click();
+      await a.locator('.emote-own-bubble').waitFor();
+      await stable(a);
+      await a.locator('[data-act=toggle-emote-menu]').click();
+      assert.equal(await a.locator('[data-act=send-emote]:enabled').count(),0,'发送后 5 秒冷却禁用快捷消息');
+      await a.locator('[data-act=toggle-emote-menu]').click();
+      await a.locator('#reflect-select').focus();
+      await a.locator('.emote-own-bubble').waitFor({state:'detached'});
+      await stable(a,{select:true});
       await b.locator('[data-act=move][data-id=charge]').click();
       await b.locator('[data-act=submit-action]').click();
       await a.waitForFunction(()=>state.room.submitted.length===1);
@@ -118,7 +136,7 @@ try{
       await selecting(a,3);
       assert.equal(await a.locator('.seat .locked').count(),0,'下一回合清除上回合锁定标记');
       assert.equal(await a.locator('[data-act=submit-action]').isDisabled(),true,'下一回合需要重新选择招式');
-      console.log(transport+': passed other/self lock, target/dropdown preservation, failed retry, next round');
+      console.log(transport+': passed other/self lock, target/dropdown preservation, emote arrival/expiry/send, failed retry, next round');
     }finally{
       for(const page of pages){try{await post(page,'/rooms/leave');}catch{}}
       for(const context of contexts)await context.close();

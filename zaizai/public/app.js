@@ -2,7 +2,9 @@ const $ = selector => document.querySelector(selector);
 const app = $('#app');
 const dialog = $('#modal');
 const PALETTE = ['#c4f582', '#94c5ff', '#ffb78d', '#d2b6ff', '#ffabc6', '#87d9d2', '#e7d78f', '#b6baff'];
-const EMOTES = ['欢迎，伙伴', '玩得不错', '小心了！', '抱歉'];
+const EMOTES = ['欸，欸，哦！！', '干得漂亮！', '小心了！', '抱歉'];
+const EMOTE_DURATION_MS = 3000;
+const EMOTE_COOLDOWN_MS = 5000;
 const FALLBACK_MOVES = {
   charge: {name:'仔',icon:'✦',description:'积蓄力量，获得 1 个仔。',cost:{},color:'mint'},
   guard: {name:'防',icon:'◇',description:'抵挡枪与火球的攻击，并获得 1 个防。',cost:{},color:'blue'},
@@ -27,6 +29,7 @@ let rulesReady;
 let pollingStateKey;
 let deferredRender = false;
 let renderedSelection = null;
+let renderedEmotes = null;
 const ui = {move:null,target:null,reflect:'gun',interruptTarget:null,busy:false,emoteBusy:false,emoteMenu:false,receiveEmotes:localStorage.getItem('zaizai-receive-emotes')!=='false',search:'',filter:'all',sound:localStorage.getItem('zaizai-sound')==='true',statusOpen:{}};
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon = (name, size = 20) => {
@@ -102,20 +105,33 @@ function acceptState(next) {
 }
 function scheduleEmoteExpiry(room) {
   clearTimeout(emoteExpiryTimer);
-  const pending=(room?.emotes||[]).filter(emote=>emote.sentAt+2000>Date.now()+timeOffset);
+  const pending=(room?.emotes||[]).filter(emote=>emote.sentAt+EMOTE_DURATION_MS>Date.now()+timeOffset);
   if(!pending.length)return;
-  const expiresAt=Math.min(...pending.map(emote=>emote.sentAt+2000));
-  emoteExpiryTimer=setTimeout(()=>{render();scheduleEmoteExpiry(state.room);},Math.max(0,expiresAt-Date.now()-timeOffset));
+  const expiresAt=Math.min(...pending.map(emote=>emote.sentAt+EMOTE_DURATION_MS));
+  emoteExpiryTimer=setTimeout(()=>{patchEmotes();scheduleEmoteExpiry(state.room);},Math.max(0,expiresAt-Date.now()-timeOffset));
+}
+function emoteKey() {
+  return JSON.stringify([(state.room?.emotes||[]).filter(emote=>emote.sentAt+EMOTE_DURATION_MS>Date.now()+timeOffset),ui.emoteMenu,ui.emoteBusy,ui.receiveEmotes,emoteReadyAt]);
+}
+function patchEmotes() {
+  const room=state.room,layer=app.querySelector('.emote-layer'),controls=app.querySelector('.emote-controls');
+  if(!room||!layer||!controls)return;
+  const key=emoteKey();
+  if(key===renderedEmotes)return;
+  layer.outerHTML=renderEmoteBubbles(room,['selecting','interrupt','reveal'].includes(room.phase));
+  controls.outerHTML=renderEmoteControls();
+  renderedEmotes=key;
+  tick();
 }
 async function sendEmote(text) {
   if(ui.emoteBusy||Date.now()<emoteReadyAt)return;
-  ui.emoteBusy=true;emoteReadyAt=Date.now()+3000;render();
+  ui.emoteBusy=true;emoteReadyAt=Date.now()+EMOTE_COOLDOWN_MS;patchEmotes();
   try {
     await api('/game/emote',{text});
     ui.emoteMenu=false;
     acceptState(await api('/state'));
   } catch(error) {toast(error.message);}
-  finally {ui.emoteBusy=false;render();}
+  finally {ui.emoteBusy=false;patchEmotes();}
 }
 async function login(name) {
   const data=await api('/session',{name,token});
@@ -179,8 +195,7 @@ function disabled(value) {return value?'disabled':'';}
 function selectionKey(){
   const room=state.room;
   if(!self||room?.phase!=='selecting')return null;
-  const visibleEmotes=(room.emotes||[]).filter(emote=>Date.now()+timeOffset<emote.sentAt+2000&&(ui.receiveEmotes||emote.playerId===self.id));
-  return JSON.stringify({self,room:{...room,submitted:null,ownAction:null},move:ui.move,target:ui.target,reflect:ui.reflect,sound:ui.sound,statusOpen:ui.statusOpen,emoteMenu:ui.emoteMenu,receiveEmotes:ui.receiveEmotes,visibleEmotes});
+  return JSON.stringify({self,room:{...room,submitted:null,ownAction:null,emotes:null},move:ui.move,target:ui.target,reflect:ui.reflect,sound:ui.sound,statusOpen:ui.statusOpen});
 }
 function canPatchSelection(){
   return renderedSelection!==null&&renderedSelection.key===selectionKey();
@@ -225,6 +240,7 @@ function patchSelection(){
   const lock=app.querySelector('[data-act="submit-action"]');
   const lockDisabled=ui.busy||!validSelection(room,me);
   if(lock&&lock.disabled!==lockDisabled)lock.disabled=lockDisabled;
+  patchEmotes();
   tick();
   return true;
 }
@@ -246,6 +262,7 @@ function render() {
   attachTutorialCatalog();
   const key=selectionKey();
   renderedSelection=key?{key,ownAction:JSON.stringify(state.room.ownAction)}:null;
+  renderedEmotes=emoteKey();
   for(const [id,value] of preserved){const el=document.getElementById(id);if(el)el.value=value;}
   if(focusId&&document.getElementById(focusId)&&app.contains(document.getElementById(focusId))){
     const el=document.getElementById(focusId);el.focus({preventScroll:true});
@@ -397,11 +414,10 @@ function renderSeats(room,inGame){
   }).join('')+(['interrupt','reveal'].includes(room.phase)?renderActionTable(room):'')+renderEmoteBubbles(room,inGame);
 }
 function renderEmoteBubbles(room,inGame){
-  const visible=(room.emotes||[]).filter(emote=>emote.playerId!==self.id&&Date.now()+timeOffset<emote.sentAt+2000&&ui.receiveEmotes);
-  if(!visible.length)return '';
+  const visible=(room.emotes||[]).filter(emote=>emote.playerId!==self.id&&Date.now()+timeOffset<emote.sentAt+EMOTE_DURATION_MS&&ui.receiveEmotes);
   const players=[...room.players].filter(p=>inGame||!p.left).sort((a,b)=>a.seat-b.seat);
   const slots=inGame?players.length:Math.max(room.capacity,players.length);
-  if(!slots)return '';
+  if(!slots)return '<div class="emote-layer" aria-live="polite"></div>';
   const selfIndex=Math.max(0,players.findIndex(p=>p.id===self.id));
   const bubbles=visible.map(emote=>{
     const index=players.findIndex(p=>p.id===emote.playerId);
@@ -414,7 +430,7 @@ function renderEmoteBubbles(room,inGame){
 }
 function renderEmoteControls(){
   const remaining=Math.max(0,Math.ceil((emoteReadyAt-Date.now())/1000));
-  const ownEmote=[...(state.room?.emotes||[])].reverse().find(emote=>emote.playerId===self.id&&Date.now()+timeOffset<emote.sentAt+2000);
+  const ownEmote=[...(state.room?.emotes||[])].reverse().find(emote=>emote.playerId===self.id&&Date.now()+timeOffset<emote.sentAt+EMOTE_DURATION_MS);
   return `<div class="emote-controls" style="left:calc(50% + 37px);top:calc(86% - 37px)" data-menu-open="${ui.emoteMenu}">${ownEmote?`<span class="emote-bubble emote-own-bubble" aria-live="polite">${esc(ownEmote.text)}</span>`:''}<button class="emote-launcher" data-act="toggle-emote-menu" aria-label="发送表情" aria-expanded="${ui.emoteMenu}" title="发送表情">☺</button>${ui.emoteMenu?`<div class="emote-menu" role="group" aria-label="选择表情">${EMOTES.map(text=>`<button class="emote-option" data-act="send-emote" data-text="${text}" ${disabled(ui.emoteBusy||remaining>0)}>${esc(text)}</button>`).join('')}<button class="emote-receive" data-act="toggle-emote-receive">${ui.receiveEmotes?'屏蔽其他人的表情':'恢复显示其他人的表情'}</button><span class="emote-cooldown"${remaining?'':' hidden'}>还需 ${remaining} 秒</span></div>`:''}</div>`;
 }
 function meAlive(room){return room.players.some(p=>p.id===self.id&&p.hp>0);}
@@ -500,8 +516,8 @@ document.addEventListener('click',async event=>{
   if(act==='invite')return copyText(`${location.origin}/?room=${state.room.id}`,'邀请链接已复制，发给朋友来集合！');
   if(act==='copy-code')return copyText(state.room.id,'房间号已复制');
   if(act==='sound'){ui.sound=!ui.sound;localStorage.setItem('zaizai-sound',String(ui.sound));sound();render();toast(ui.sound?'音效已开启':'音效已关闭');return;}
-  if(act==='toggle-emote-menu'){ui.emoteMenu=!ui.emoteMenu;render();return;}
-  if(act==='toggle-emote-receive'){ui.receiveEmotes=!ui.receiveEmotes;localStorage.setItem('zaizai-receive-emotes',String(ui.receiveEmotes));render();return;}
+  if(act==='toggle-emote-menu'){ui.emoteMenu=!ui.emoteMenu;patchEmotes();return;}
+  if(act==='toggle-emote-receive'){ui.receiveEmotes=!ui.receiveEmotes;localStorage.setItem('zaizai-receive-emotes',String(ui.receiveEmotes));patchEmotes();return;}
   if(act==='send-emote')return sendEmote(el.dataset.text);
   if(act==='move'){
     ui.move=id;ui.target=null;sound();render();

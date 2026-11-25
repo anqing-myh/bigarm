@@ -40,6 +40,24 @@ docker build -t bigarm-arena .
 docker run --rm -p 3200:3200 bigarm-arena
 ```
 
+## systemd 服务器更新
+
+服务器共用仓库 `/www/wwwroot/zaizai-deploy`、systemd 服务名为 `bigarm`、端口为 3200 时，以 root 执行：
+
+```sh
+bash /www/wwwroot/zaizai-deploy/bigarm/update.sh
+```
+
+首次使用前，先将含脚本的版本提交并推送，再在服务器执行一次 `cd /www/wwwroot/zaizai-deploy && git pull --ff-only origin main`，之后只需上面这一行，不需要额外 `chmod`。
+
+脚本检查 `main` 分支、已跟踪文件是否存在本地改动，以及 Node/服务是否可用；随后仅快进拉取、必要时安装生产依赖、运行大臂规则和 HTTP 测试、重启 `bigarm`，最后验证 3200 健康接口。测试失败就停止，不自动覆盖、清理或回滚本地修改。宝塔生成的未跟踪文件会保留，同路径冲突由 Git 拒绝。两个游戏共用更新锁，防止同时更新同一仓库。服务器不运行浏览器测试；发布前仍须完成本地浏览器回归。
+
+默认 Node 为 `/www/server/nodejs/v26.13.1/bin/node`，需要时可用 `NODE_BIN=/新的绝对路径/node bash /www/wwwroot/zaizai-deploy/bigarm/update.sh` 指定。
+
+共用仓库的拉取会更新两款游戏的文件，包括可能立即生效的网页静态资源；脚本只重启大臂。若仔仔也有更新，另行执行 `bash /www/wwwroot/zaizai-deploy/zaizai/update.sh`。即使代码已拉取，再运行仍会重新测试并重启对应服务。完全独立的代码发布时间需要分开部署目录。
+
+重启会清空大臂内存中的身份、房间、战报和胜场，建议无对局时执行。测试失败时磁盘代码已经拉取，但服务不会重启；先处理错误后再运行。脚本不包含凭据，可以公开提交。
+
 ## 模块分层
 
 | 模块 | 职责 |

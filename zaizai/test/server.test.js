@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { createServer } from '../server/index.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-test('房间表情仅允许预设短消息并限制发送频率和显示时长', { timeout: 8000 }, async t => {
+test('房间表情显示 3 秒，每位玩家 5 秒内最多发送一条', { timeout: 10000 }, async t => {
   const server = createServer();
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -30,16 +30,22 @@ test('房间表情仅允许预设短消息并限制发送频率和显示时长',
   const roomId = (await request('/state', a.data.token)).data.room.id;
   await request('/rooms/join', b.data.token, { roomId });
   assert.equal((await request('/game/emote', a.data.token, { text: '不允许的文本' })).status, 400);
-  assert.equal((await request('/game/emote', a.data.token, { text: '欢迎，伙伴' })).status, 200);
+  assert.equal((await request('/game/emote', a.data.token, { text: '欸，欸，哦！！' })).status, 200);
   const [sender, receiver] = await Promise.all([
     request('/state', a.data.token),
     request('/state', b.data.token),
   ]);
-  assert.deepEqual(sender.data.room.emotes.map(emote => emote.text), ['欢迎，伙伴']);
+  assert.deepEqual(sender.data.room.emotes.map(emote => emote.text), ['欸，欸，哦！！']);
   assert.deepEqual(receiver.data.room.emotes.map(emote => emote.playerId), [a.data.self.id]);
   assert.equal((await request('/game/emote', a.data.token, { text: '抱歉' })).status, 400);
   await delay(2100);
+  assert.deepEqual((await request('/state', b.data.token)).data.room.emotes.map(emote => emote.playerId), [a.data.self.id], '超过 2 秒仍然显示');
+  await delay(1100);
   assert.deepEqual((await request('/state', b.data.token)).data.room.emotes, []);
+  assert.equal((await request('/game/emote', a.data.token, { text: '抱歉' })).status, 400, '超过旧 3 秒间隔仍不能重发');
+  assert.equal((await request('/game/emote', b.data.token, { text: '小心了！' })).status, 200, '不同玩家独立限频');
+  await delay(1900);
+  assert.equal((await request('/game/emote', a.data.token, { text: '抱歉' })).status, 200, '5 秒后可再次发送');
 });
 
 test('联机服务：身份、权限、2–8 人房间、招式保密、阵亡、展示时长和重新准备', { timeout: 45000 }, async t => {

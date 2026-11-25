@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { MOVES, validateAction, payCosts, resolveRound } from '../server/game.js';
+import { checkArenaEffects } from './arena-fx-browser.mjs';
 
 const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:3100';
 const browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true });
@@ -164,6 +165,7 @@ async function waitPhase(page, phase, round) {
   if(selector)await page.locator(selector).waitFor();
 }
 try {
+  await checkArenaEffects(browser, base, errors);
   for (let i = 0; i < 3; i++) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, reducedMotion: 'reduce' });
     const page = await context.newPage();
@@ -430,7 +432,7 @@ try {
   await waitPhase(a,'selecting',3);
   assert.ok((await info(a)).room.players.every(p=>p.hp===1),'抵消后继续下一回合');
   assert.deepEqual(errors,[],'浏览器无 JavaScript 或资源错误');
-  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','首页规则入口与数字强调','头像状态栏折叠展开且不误选目标','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局','公开资源和雪崩禁招','亮招目标与金盾反弹信息'],screenshots:18,errors},null,2));
+  console.log(JSON.stringify({ok:true,checks:['桌面与移动端同屏布局','首页规则入口与数字强调','头像状态栏折叠展开且不误选目标','所有视角自己居底、序号逆时针','8 人及全部 14 招式布局','精简选招区与底部局数居中','雪崩禁招选项过滤','战场内部左上排行榜与右下战报','两人自动选择对手、多人手动选目标','3 个独立浏览器实时同步','创建/加入/调整房间','准备状态及自动开局','仅展示可用招式','历史战报','流星锤亮招后封锁','伤害与阵亡禁用','刷新重连','胜利与房间胜场排行','重新准备与连续对局','胜者离房后结果保持不变','枪对枪抵消且继续对局','公开资源和雪崩禁招','亮招目标与金盾反弹信息','流星锤特效持续与封锁面板无遮挡'],screenshots:34,errors},null,2));
 } finally {
   for(const page of pages) {
     try { await page.evaluate(async()=>{const token=sessionStorage.getItem('zaizai-token');if(token)await fetch('/api/rooms/leave',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:'{}'});}); } catch {}

@@ -6,7 +6,7 @@ import { catalogDocument, toYaml } from '../scripts/export-rules.mjs';
 
 test('formal YAML review list covers every move with the same names and spell classification', async () => {
   const yaml = await readFile(new URL('../doc/招式清单.yaml', import.meta.url), 'utf8');
-  const moves = yaml.split('\nmoves:\n')[1]; assert.ok(moves);
+  const moves = yaml.split(/\r?\nmoves:\r?\n/)[1]; assert.ok(moves);
   const entries = [...moves.matchAll(/^  (\w+):\r?\n([\s\S]*?)(?=^  \w+:\r?\n|(?![\s\S]))/gm)];
   assert.deepEqual(entries.map(e => e[1]).sort(), Object.keys(MOVES).sort());
   for (const [, id, body] of entries) {
