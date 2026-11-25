@@ -4,6 +4,44 @@ import { once } from 'node:events';
 import { createServer } from '../server/index.js';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+test('房间表情仅允许预设短消息并限制发送频率和显示时长', { timeout: 8000 }, async t => {
+  const server = createServer();
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const tokens = [];
+  async function request(route, token, body) {
+    const response = await fetch(base + route, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    return { status: response.status, data: await response.json() };
+  }
+  t.after(async () => {
+    for (const token of tokens) await request('/rooms/leave', token, {});
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  });
+  const a = await request('/session', null, { name: '表情甲' });
+  const b = await request('/session', null, { name: '表情乙' });
+  tokens.push(a.data.token, b.data.token);
+  await request('/rooms/create', a.data.token, { capacity: 2 });
+  const roomId = (await request('/state', a.data.token)).data.room.id;
+  await request('/rooms/join', b.data.token, { roomId });
+  assert.equal((await request('/game/emote', a.data.token, { text: '不允许的文本' })).status, 400);
+  assert.equal((await request('/game/emote', a.data.token, { text: '欢迎，伙伴' })).status, 200);
+  const [sender, receiver] = await Promise.all([
+    request('/state', a.data.token),
+    request('/state', b.data.token),
+  ]);
+  assert.deepEqual(sender.data.room.emotes.map(emote => emote.text), ['欢迎，伙伴']);
+  assert.deepEqual(receiver.data.room.emotes.map(emote => emote.playerId), [a.data.self.id]);
+  assert.equal((await request('/game/emote', a.data.token, { text: '抱歉' })).status, 400);
+  await delay(2100);
+  assert.deepEqual((await request('/state', b.data.token)).data.room.emotes, []);
+});
+
 test('联机服务：身份、权限、2–8 人房间、招式保密、阵亡、展示时长和重新准备', { timeout: 45000 }, async t => {
   const server = createServer();
   server.listen(0, '127.0.0.1');

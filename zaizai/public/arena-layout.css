@@ -175,3 +175,29 @@ dialog .battle-log .log-content{max-height:min(52dvh,480px)}
 .game-room .damage-float,.game-room .heal-float{white-space:nowrap;line-height:1.2}
 .game-room .damage-float+.heal-float{top:50px}
 @media(prefers-reduced-motion:reduce){.table-action.is-frozen::before,.table-action.is-frozen::after{animation:none}}
+
+.emote-controls{position:absolute;z-index:7}
+.emote-launcher{display:grid;place-items:center;width:34px;height:34px;border:1px solid #718657;border-radius:50%;background:#202a1f;color:#d4f7ad;font-size:21px;box-shadow:0 3px 12px #0008}
+.emote-own-bubble{position:absolute;left:50%;bottom:calc(100% + 12px);transform:translateX(-50%);pointer-events:none}
+.emote-launcher:hover{background:#2d3b27;border-color:#c4f582}
+.emote-menu{position:absolute;right:calc(100% + 18px);bottom:calc(100% + 18px);display:grid;gap:5px;width:max-content;max-width:180px;padding:9px;border:1px solid #718657;border-radius:12px;background:#172018;box-shadow:0 5px 16px #0008}
+.emote-menu::before{content:'';position:absolute;right:-6px;bottom:13px;width:10px;height:10px;border-top:1px solid #718657;border-right:1px solid #718657;background:#172018;transform:rotate(45deg)}
+.emote-controls:has(.emote-menu){z-index:8}
+.emote-option,.emote-receive{min-height:32px;padding:6px 10px;border:1px solid #354430;border-radius:7px;background:#202a1f;color:#fff;font-size:14px;text-align:left;white-space:nowrap}
+.emote-option:hover:not(:disabled),.emote-receive:hover{border-color:#819568;background:#2b3826}
+.emote-option:disabled{opacity:.52}
+.emote-receive{color:#b4c99f}
+.emote-cooldown{padding:1px 5px;color:#93a887;font-size:9px;text-align:center}
+.emote-layer{position:absolute;inset:0;z-index:0;pointer-events:none}
+.game-room .emote-bubble{position:absolute;z-index:auto;max-width:160px;padding:7px 11px;border:1px solid #78945c;border-radius:11px;background:#172018;color:#fff;font-size:14px;line-height:1.4;white-space:nowrap;box-shadow:0 3px 10px #0005}
+.game-room .emote-right{transform:translate(40px,-50%)}
+.game-room .emote-left{transform:translate(calc(-100% - 40px),-50%)}
+@media(max-width:600px){
+  .emote-controls{left:calc(50% + 25px)!important;top:calc(86% - 25px)!important}
+  .emote-launcher{width:28px;height:28px;font-size:18px}
+  .emote-menu{right:calc(100% + 14px);bottom:calc(100% + 14px);max-width:150px;padding:7px}
+  .emote-option,.emote-receive{min-height:28px;padding:4px 7px;font-size:12px}
+  .game-room .emote-bubble{max-width:125px;padding:5px 8px;font-size:12px}
+  .game-room .emote-right{transform:translate(28px,-50%)}
+  .game-room .emote-left{transform:translate(calc(-100% - 28px),-50%)}
+}

@@ -9,6 +9,9 @@ const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const SELECTION_MS = Number(process.env.SELECTION_MS) || 15000;
 const INTERRUPT_MS = Number(process.env.INTERRUPT_MS) || 12000;
 const DISCONNECT_MS = Number(process.env.DISCONNECT_MS) || 60000;
+const EMOTE_COOLDOWN_MS = 3000;
+const EMOTE_DURATION_MS = 2000;
+const EMOTES = new Set(['欢迎，伙伴', '玩得不错', '小心了！', '抱歉']);
 const sessions = new Map();
 const rooms = new Map();
 const allowedFiles = new Set(['index.html', 'app.js', 'arena-fx.js', 'tutorial.js', 'styles.css', 'arena-layout.css']);
@@ -24,6 +27,7 @@ function roomView(room, session) {
   return {
     id: room.id, name: room.name, hostId: room.hostId, capacity: room.capacity, phase: room.phase, round: room.round,
     players: room.players.map(playerView), deadline: room.deadline,
+    emotes: (room.emotes || []).filter(emote => now() - emote.sentAt < EMOTE_DURATION_MS),
     submitted: Object.keys(room.actions), ownAction: room.actions[session.id] || null,
     actions: visible ? room.actions : null,
     interrupts: room.phase === 'reveal' || room.phase === 'finished' ? room.interrupts : null,
@@ -277,7 +281,7 @@ export function createServer() {
             if (!Number.isInteger(capacity) || capacity < 2 || capacity > 8) fail('房间人数应为 2–8 人。');
             if (rooms.size >= 200) fail('当前房间已满，请稍后重试。');
             let id; do { id = randomBytes(3).toString('hex').toUpperCase(); } while (rooms.has(id));
-            room = { id, name: cleanName(body.name, '', 20) || `${session.name}的房间`, hostId: session.id, capacity, phase: 'waiting', round: 0, gameNumber: 0, lastMatch: null, scores: {}, players: [makePlayer(session, 0)], actions: {}, interrupts: {}, result: null, history: [], deadline: null, createdAt: now(), updatedAt: now() };
+            room = { id, name: cleanName(body.name, '', 20) || `${session.name}的房间`, hostId: session.id, capacity, phase: 'waiting', round: 0, gameNumber: 0, lastMatch: null, scores: {}, players: [makePlayer(session, 0)], actions: {}, interrupts: {}, emotes: [], result: null, history: [], deadline: null, createdAt: now(), updatedAt: now() };
             rememberPlayer(room, room.players[0]);
             rooms.set(id, room); session.roomId = id;
             break;
@@ -321,6 +325,16 @@ export function createServer() {
             if (room.actions[session.id]) fail('本回合已经锁定招式。');
             room.actions[session.id] = validateAction(room.players, session.id, body);
             if (room.players.filter(p => p.hp > 0).every(p => room.actions[p.id])) reveal(room);
+            break;
+          }
+          case '/api/game/emote': {
+            if (!room || !room.players.some(p => p.id === session.id && !p.left)) fail('你不在房间中。');
+            if (!EMOTES.has(body.text)) fail('请选择有效的表情。');
+            const sentAt = now();
+            if (sentAt - (session.lastEmoteAt || 0) < EMOTE_COOLDOWN_MS) fail('发送表情间隔为 3 秒，请稍候。');
+            session.lastEmoteAt = sentAt;
+            room.emotes = (room.emotes || []).filter(emote => sentAt - emote.sentAt < EMOTE_DURATION_MS);
+            room.emotes.push({ playerId: session.id, text: body.text, sentAt });
             break;
           }
           case '/api/game/interrupt': {
