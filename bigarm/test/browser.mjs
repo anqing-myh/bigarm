@@ -88,7 +88,7 @@ try {
   await battlefieldFits(a);
   await a.locator('#move-search').fill('huixuanbiao'); assert.equal(await a.locator('#move-results button').count(), 0);
   await a.locator('#move-search').fill(''); await a.locator('[data-act=all-moves]').click();
-  assert.equal(await a.locator('.available-list button').count(), 7); // Six basic actions plus the free guard-six spell.
+  assert.equal(await a.locator('.available-list button').count(), 8); // Six basics, guard-six, and frog-absent.
   await a.locator('.available-list [data-id=basicB]').click(); assert.equal(await a.locator('#modal').isVisible(), false);
   await b.setViewportSize({ width: 390, height: 844 }); await battlefieldFits(b);
   await b.screenshot({ path: 'test-results/selection-mobile.png', fullPage: true });
@@ -198,20 +198,26 @@ try {
   });
   await blessed.locator('#blessing').waitFor(); await battlefieldFits(blessed);
   const big = blessed.locator('.blessing-event').filter({ has: blessed.getByText('六拳合一', { exact: true }) });
-  const small = blessed.locator('.blessing-event').filter({ has: blessed.getByText('剑', { exact: true }) });
   assert.equal(await big.locator('.blessing-quick:visible').count(), 5);
-  assert.equal(await small.locator('.blessing-quick:visible').count(), 1);
-  await big.locator('input').fill('6'); assert.equal(await small.locator('.blessing-quick:visible').count(), 0);
+  assert.equal(await blessed.locator('.blessing-event').count(), 1, 'only the current damage event is offered');
+  await big.locator('input').fill('6'); assert.equal(await blessed.locator('#blessing-left').innerText(), '0');
   await big.locator('input').fill('7'); assert.equal(await blessed.locator('#blessing .primary-button').isDisabled(), true);
   await big.locator('input').fill('0');
   await big.locator('[data-act=bless][data-value="5"]').click();
-  await small.locator('[data-act=bless][data-value="1"]').click();
-  assert.equal(await blessed.locator('#blessing-left').innerText(), '0');
+  assert.equal(await blessed.locator('#blessing-left').innerText(), '1');
   const confirm = await blessed.locator('#blessing .primary-button').boundingBox();
   assert.ok(confirm.y >= 0 && confirm.y + confirm.height <= 844, 'blessing confirmation stays visible while damage entries scroll');
   await blessed.screenshot({ path: 'test-results/blessing-mobile.png', fullPage: true });
   await blessed.setViewportSize({ width: 1360, height: 950 }); await battlefieldFits(blessed);
   await blessed.screenshot({ path: 'test-results/blessing-desktop.png', fullPage: true });
+  await blessed.locator('#blessing .primary-button').click();
+  const nextBlessing = await waitInfo(blessed, s => s.room.phase === 'choice' && s.room.pending?.events?.[0]?.move === 'sword');
+  assert.equal(nextBlessing.room.pending.budget, 1);
+  await blessed.locator('.blessing-event').filter({ has: blessed.getByText('剑', { exact: true }) }).waitFor();
+  const small = blessed.locator('.blessing-event');
+  assert.equal(await small.locator('.blessing-quick:visible').count(), 1);
+  await small.locator('[data-act=bless][data-value="1"]').click();
+  assert.equal(await blessed.locator('#blessing-left').innerText(), '0');
   await blessed.locator('#blessing .primary-button').click();
   const result = await waitInfo(blessed, s => s.room.phase !== 'choice');
   assert.equal(result.room.players.find(p => p.id === result.self.id).hp, 2);
@@ -274,8 +280,94 @@ try {
   assert.equal(next.room.history[0].damage.length, 0, 'curse life loss is not a damage event');
   await v2.setViewportSize({ width: 1360, height: 950 }); await battlefieldFits(v2);
   await v2.screenshot({ path: 'test-results/v2-result-desktop.png', fullPage: true });
+  // All V3 entries are now confirmed; affordability still governs selection.
+  await v2.locator('[data-act=rules]').first().click();
+  await v2.locator('#rule-search').fill('五连镖');
+  assert.ok((await v2.locator('.rules-list').innerText()).includes('超闪防法或纯法术/辅助行动'));
+  await v2.locator('#rule-search').fill('三昧真火');
+  assert.ok((await v2.locator('.rules-list').innerText()).includes('各回合依次'));
+  await v2.locator('#rule-search').fill('天闪凌云');
+  assert.ok((await v2.locator('.rules-list').innerText()).includes('0至3'));
+  assert.ok(!(await v2.locator('.rules-list').innerText()).includes('待确认'));
+  await v2.locator('#close-modal').click();
+  await v2.locator('#move-search').fill('txly');
+  assert.equal(await v2.locator('#move-results [data-id=skyDodge]').count(), 0);
+  // Earn 7 real S resources, then verify V3 multisegment shield handling through the normal HTTP/UI flow.
+  const v3 = await page(390); await v3.setViewportSize({ width: 390, height: 844 }); await login(v3, '三版测试', v2Base);
+  await v3.locator('#create [name=capacity]').selectOption('2'); await v3.locator('#create button').click();
+  await v3.locator('[data-act=ready]').waitFor();
+  const v3Actors = await v3.evaluate(async () => {
+    const own = sessionStorage.getItem('bigarm-token');
+    const post = async (url, body, token) => { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }); if (!r.ok) throw new Error(await r.text()); return r.json(); };
+    const get = async () => (await fetch('/api/state', { headers: { Authorization: `Bearer ${own}` } })).json();
+    const initial = await get(), bot = await post('/api/session', { name: '护盾玩家' });
+    await post('/api/rooms/join', { roomId: initial.room.id }, bot.token);
+    for (const token of [own, bot.token]) await post('/api/rooms/ready', {}, token);
+    for (let i = 0; i < 13; i++) {
+      const s = await get();
+      await post('/api/game/action', { round: s.room.round, move: i % 2 === 0 ? 'basicS' : 'basicB' }, own);
+      await post('/api/game/action', { round: s.room.round, move: i < 5 ? 'basicF' : 'basicB' }, bot.token);
+      let advanced = false;
+      for (let n = 0; n < 200; n++) { const next = await get(); if (next.room.phase === 'selecting' && next.room.round > s.room.round) { advanced = true; break; } await new Promise(r => setTimeout(r, 10)); }
+      if (!advanced) throw new Error('v3 fixture did not advance');
+    }
+    return { own, bot: bot.token, botId: bot.self.id };
+  });
+  await v3.locator('[data-act=lock]').waitFor();
+  await v3.locator('#move-search').fill('myzq');
+  await v3.locator('#move-results [data-id=roamingGun]').click(); await battlefieldFits(v3);
+  await v3.locator('[data-act=lock]').click();
+  const postV3 = async (move, token, round) => {
+    const r = await fetch(`${v2Base}/api/game/action`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ move, round }) });
+    assert.equal(r.status, 200, await r.text());
+  };
+  await postV3('protectorF', v3Actors.bot, 14);
+  let v3State = await waitInfo(v3, s => s.room.round === 15 && s.room.phase === 'selecting');
+  let target = v3State.room.players.find(p => p.id === v3Actors.botId);
+  assert.equal(target.hp, 4); assert.equal(target.shields.length, 0); assert.equal(target.resources.protectorF, 1);
+  assert.deepEqual(v3State.room.history[0].damage.map(d => d.amount), [0.5, 0.5]);
+  assert.equal(v3State.room.history[0].logs.filter(e => e.type === 'hit').length, 3);
+  await v3.locator('[data-act=lock]').waitFor(); await move(v3, 'basicB'); await postV3('protectorB', v3Actors.bot, 15);
+  v3State = await waitInfo(v3, s => s.room.round === 16 && s.room.phase === 'selecting');
+  assert.equal(v3State.room.players.find(p => p.id === v3Actors.botId).shields.length, 1);
+  await v3.locator('[data-act=lock]').waitFor(); await move(v3, 'punch'); await postV3('basicB', v3Actors.bot, 16);
+  v3State = await waitInfo(v3, s => s.room.round === 17 && s.room.phase === 'selecting');
+  target = v3State.room.players.find(p => p.id === v3Actors.botId);
+  assert.equal(target.hp, 3); assert.equal(target.shields.length, 0); assert.equal(target.resources.protectorB, 1);
+  assert.ok(v3State.room.history[0].logs.some(e => e.type === 'protectorExpired'));
+  await v3.locator('[data-act=lock]').waitFor(); await battlefieldFits(v3);
+  await v3.screenshot({ path: 'test-results/v3-result-mobile.png', fullPage: true });
+  // Earn the remaining 2S + 4C legally; the recipient uses the real UI for sky-dodge's new choice.
+  await v3.evaluate(async ({ bot }) => {
+    const own = sessionStorage.getItem('bigarm-token');
+    const get = async () => (await fetch('/api/state', { headers: { Authorization: `Bearer ${own}` } })).json();
+    const post = async (move, token, round) => { const r = await fetch('/api/game/action', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ move, round }) }); if (!r.ok) throw new Error(await r.text()); };
+    for (const move of ['basicC', 'basicB', 'basicS', 'basicB', 'basicC', 'basicB', 'basicS', 'basicB', 'basicC', 'basicB', 'basicC']) {
+      const before = await get(); await post(move, own, before.room.round); await post('basicB', bot, before.room.round);
+      let advanced = false;
+      for (let n = 0; n < 200; n++) { const next = await get(); if (next.room.phase === 'selecting' && next.room.round > before.room.round) { advanced = true; break; } await new Promise(r => setTimeout(r, 10)); }
+      if (!advanced) throw new Error('sky-dodge fixture did not advance');
+    }
+  }, v3Actors);
+  const recipient = await page(390); await recipient.setViewportSize({ width: 390, height: 844 });
+  await recipient.addInitScript(token => sessionStorage.setItem('bigarm-token', token), v3Actors.bot);
+  await recipient.goto(v2Base); await recipient.locator('[data-act=lock]').waitFor();
+  const skyRound = (await info(v3)).room.round;
+  await v3.locator('[data-act=lock]').waitFor(); await move(v3, 'skyDodge');
+  await move(recipient, 'basicB');
+  await waitInfo(recipient, s => s.room.pending?.kind === 'healTransfer');
+  await recipient.locator('.choice-option[data-id="3"]').waitFor(); await battlefieldFits(recipient);
+  assert.equal(await recipient.locator('.choice-option').count(), 4);
+  assert.ok((await recipient.locator('.choice-option[data-id="3"]').innerText()).includes('伤害0，流失3，回血3'));
+  await recipient.screenshot({ path: 'test-results/v3-sky-choice-mobile.png', fullPage: true });
+  await recipient.locator('.choice-option[data-id="3"]').click();
+  const skyResult = await waitInfo(v3, s => s.room.phase === 'finished' || s.room.phase === 'reveal');
+  const source = skyResult.room.players.find(p => p.id === skyResult.self.id);
+  assert.equal(source.hp, 8); assert.equal(source.maxHp, 8); assert.equal(skyResult.room.history[0].round, skyRound);
+  assert.equal(skyResult.room.history[0].damage[0].finalAmount, 0);
+  assert.equal(skyResult.room.history[0].lifeLoss[0].amount, 3);
   assert.deepEqual(errors, []);
-  console.log('PASS: room lifecycle, hidden locks, legal/pinyin search, desktop/mobile layouts, shield feedback, blessing budgets, V2 named statuses/red dodge warning, earned/consumed move stock, curse life loss, history and scores.');
+  console.log('PASS: room lifecycle, hidden locks, legal/pinyin search, desktop/mobile layouts, shields, blessing budgets, V2 statuses/stock/curse, V3 multisegment damage and protector lifecycle, history and scores.');
 } finally {
   for (const c of contexts) await c.close();
   await browser.close();

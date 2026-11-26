@@ -12,6 +12,7 @@ test('formal YAML review list covers every move with the same names and spell cl
   for (const [, id, body] of entries) {
     assert.equal(JSON.parse(body.match(/^    name: (.+)$/m)[1]), MOVES[id].name, id);
     assert.equal(body.match(/^    is_spell: (true|false)$/m)[1], String(MOVES[id].hasSpell), `${id}: synchronize review decisions with engine classification`);
+    assert.equal(JSON.parse(body.match(/^    implementation_status: (.+)$/m)[1]), MOVES[id].implementationStatus, `${id}: synchronize implementation status`);
   }
 });
 

@@ -18,8 +18,8 @@ const battle = (s, actions) => finish(beginRound(s, actions));
 const pair = (x, y, players = [p('a'), p('b')]) => battle(state(...players), { a: x, b: y });
 const damage = (job, id) => job.damage.filter(d => d.target === id).reduce((sum, d) => sum + d.amount - d.blessing, 0);
 
-test('current catalog: 68 actions, removed moves absent, exact integer power', () => {
-  assert.deepEqual(Object.values(MOVES).reduce((r, m) => ({ ...r, [m.type]: (r[m.type] || 0) + 1 }), {}), { basic: 6, attack: 41, equipment: 11, spell: 10 });
+test('current catalog: 93 actions, removed moves absent, exact integer power', () => {
+  assert.deepEqual(Object.values(MOVES).reduce((r, m) => ({ ...r, [m.type]: (r[m.type] || 0) + 1 }), {}), { basic: 6, attack: 51, equipment: 22, spell: 14 });
   assert.equal(MOVES.phoenix.power, 200); assert.equal(MOVES.balance.power, 113);
   assert.equal(MOVES.skyCannon.power, 53); assert.equal(MOVES.sickle.power, 16);
   for (const name of ['锤', '幽灵回旋镖', '打断']) assert.ok(!Object.values(MOVES).some(m => m.name === name));
@@ -154,8 +154,9 @@ test('consecutive dodge restriction counts actions only; producers and ghost syn
 });
 test('all declared moves run through the same resolver without mutating input', () => {
   for (const m of Object.values(MOVES)) {
+    if (m.implementationStatus !== 'ready') continue;
     const s = state(p('a', { resources: { ...p('a').resources, Q: 5 } }), p('b'), p('c'));
-    if (m.id === 'ghost') { addShield(s, s.players[0], 'foam'); addShield(s, s.players[0], 'foam'); }
+    for (const [type, count] of Object.entries(m.materials || {})) for (let i = 0; i < count; i++) addShield(s, s.players[0], type);
     const input = clone(s);
     const j = battle(s, { a: a(m.id, 'b', { targets: ['b'], direction: 'clockwise' }), b: a('basicB'), c: a('basicB') });
     assert.equal(j.status, 'complete', m.id); assert.deepEqual(s, input, m.id);

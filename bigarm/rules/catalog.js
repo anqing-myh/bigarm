@@ -57,6 +57,18 @@ attack('ghostArrows', '幽灵万箭齐发', { ghostDodge: 2 }, 'C', [2], { targe
 attack('ghostSword', '幽灵毁灭之剑', { ghostDodge: 2 }, 'Z', [6], { attribute: 'magic', guardRule: 'ZOrSpell', lifeCost: 1 });
 attack('ghostFinisher', '幽灵必杀', { ghostDodge: 1, voidDodge: 1 }, '', [1], { attribute: 'magic', air: true, trueDamage: true, guardRule: 'nonBasicAction' });
 
+// V3: conditional damage, recurring stages and equipment bonuses use the same pipeline.
+attack('frogArrival', '青蛙来了', '9S', 'Y', [9], { frogExplosion: true, description: '单体9物理伤害，圆盾防；青蛙没来或青蛙来不了可导致自身自爆。' });
+attack('skyDodge', '天闪凌云', '5S4C', 'S', [6], { attribute: 'magic', air: true, transferHeal: true, transferHealLimit: 3, transferDamagePerUnit: 2, transferLifeLossPerUnit: 1, description: '单体6法术伤害，闪防、对空；受击者选0至3整数x，伤害改为6−2x，自身流失x体力，来源恢复x生命并按需提高生命上限。' });
+attack('fiveDarts', '五连镖', '2B5F', '', [5], { air: true, guardRule: 'COrSpell', damageRule: 'fiveDarts', description: '单体一次物理伤害、对空；超闪或纯法术防，实际闪受1伤、方盾/圆盾受3伤、其他受5伤。' });
+attack('jingXiaoPeng', '荆霄鹏', '7F', '', [2], { guardRule: 'basicOrAttackOnly', damageRule: 'targetAttackFour', description: '单体物理伤害；目标当回合选攻击时4伤，无须指向自己；其他非资源行动防，基础资源行动受2伤。' });
+attack('roamingGun', '漫游之枪', '4S', 'SC', [0.5], { segmentsRule: 'remainingS', description: '单体物理伤害，闪/超闪防；支付4S后每剩余1个闪，产生独立一段0.5伤害，0个则0段。' });
+attack('solar', '日曜', '4Y', 'BC', [0], { attribute: 'magic', target: 'all', air: true, damageRule: 'roundY', description: '群体法术伤害、对空，大臂/超闪防；伤害为本回合实际出圆盾的人数，0伤仍可命中消耗盾。' });
+attack('sunStorm', '万阳凌空', { solar: 2 }, 'YC', [0.5], { attribute: 'magic', target: 'all', air: true, duration: 4, drain: true, description: '群体0.5法术伤害、对空，圆盾/超闪防；含当回合持续4回合，实际伤害等量即时治疗自身，受生命上限限制。' });
+attack('samadhiFire', '三昧真火', '3Y', 'C', [1], { attribute: 'magic', air: true, duration: 3, guardByRound: ['C', 'SC', 'YSC'], description: '单体法术伤害、对空；连续3回合各1伤，防法依次为超闪、闪/超闪、圆盾/闪/超闪。' });
+attack('voidBlade', '虚无利刃', { voidDodge: 2 }, 'Z', [0], { attribute: 'magic', air: true, power: 0, guardRule: 'ZOrSpell', segmentsRule: 'targetShieldLayers', description: '单体法术攻击、对空，基础0点、允许盾加点，攒防法或纯法术防；R3固定目标真实盾剩余层数，生成同样段数的0伤害。' });
+attack('giantWave', '巨浪炮', { wave: 4 }, 'C', [0], { air: true, damageRule: 'freeSlots', trueWhenPressing: true, description: '单体物理攻击、对空，超闪防；伤害=max(0,5-自身使用盾位)，点压对手时变为真伤。' });
+
 const equipment = Object.create(null);
 const shield = (id, name, cost, grade, slots, data = {}) => {
   equipment[id] = { id, name, grade, slots, position: 3, electric: false, ...data };
@@ -70,6 +82,12 @@ shield('ocean', '海神盾', 'ZZZFFF', 'electric', 2, { immuneResource: 'F', ele
 shield('flame', '烈焰盾', 'BBBYYY', 'electric', 2, { immuneResource: 'Y', immuneMove: 'phoenixFlame', electric: true });
 for (const key of 'BZFY') shield(`producer${key}`, { B: '大臂生产器', Z: '攒攒生产器', F: '方盾生产器', Y: '圆盾生产器' }[key], `5${key}`, 'foam', 1, { producer: key, position: 4, electric: true });
 shield('radar', '雷达', 'ZZZYYY', 'radar', 2, { electric: true, immuneAll: true });
+shield('frogBarrier', '青蛙来不了', { frogAbsent: 4 }, 'foam', 1, { frogWard: true });
+for (const key of 'BZFYSC') shield(`protector${key}`, { B: '大臂防护器', Z: '攒攒防护器', F: '方盾防护器', Y: '圆盾防护器', S: '闪的防护器', C: '超闪防护器' }[key], `5${key}`, 'foam', 1, { defense: key, breakOnResource: key });
+shield('plastic', '塑料盾', '3B5Z', 'plastic', 1, { position: 2.5, budget: 80, maxCount: 1, enforceOnCreate: true });
+shield('silenceShield', '沉默之盾', 'FFSC', 'foam', 1, { powerBonus: 40 });
+shield('annihilationShield', '寂灭之盾', '', 'ghost', 3, { layers: 3, materials: { silenceShield: 2 }, powerPerLayer: 40 });
+shield('lightningRod', '避雷针', 'BBBSSC', 'outer', 1, { position: 2, immuneShock: true });
 
 add('shock', '小电', 'spell', 'CC', { target: 'single', spell: 'shock', immunity: 2 });
 add('phoenixGuard', '凤之守护', 'spell', 'Q', { immunity: 2, controlImmunity: 2 });
@@ -81,6 +99,10 @@ add('heal', '回一滴血', 'spell', 'CCC', { spell: 'heal' });
 add('guardSix', '防六拳合一', 'spell', '', { spell: 'guardSix' });
 add('axi', '阿西吧', 'spell', 'C', { immunity: 2, controlImmunity: 2, lifeCost: 1 });
 add('crucio', '钻心咒', 'spell', '5C', { target: 'single', spell: 'curse', duration: 15, controlLevel: 1, immunity: 1, controlImmunity: 1 });
+add('frogAbsent', '青蛙没来', 'spell', '', { spell: 'frogWard', description: '无消耗防御性法术，使本回合场上出青蛙来了的玩家自爆。' });
+add('himalaya', '喜马拉雅闪', 'spell', '2S', { spell: 'firstAttack', description: '免疫当回合第一段命中攻击；被压制、落空、其他免疫或基础防法挡住的不计，在判定耗盾或掉血前生效。' });
+add('sixMind', '六神无主', 'spell', '6Z', { spell: 'digitWard', duration: 15, statusStartOffset: 0, immunity: 1, controlImmunity: 1, description: '当回合无敌；含当回合持续15回合，免疫名称含零一二三四五六七八九十百千万的攻击。' });
+add('damageCurse', '诅咒', 'spell', 'BBYS', { target: 'single', spell: 'damageCurse', duration: 3, controlLevel: 1, description: '指定其他一人，从下回合开始3回合，其非流失体力的受伤加倍，同名状态不叠加。' });
 
 const weights = { ...baseWeights };
 function resourceWeight(key, visiting = new Set()) {
@@ -99,6 +121,7 @@ export const RESOURCE_NAMES = Object.freeze(resourceNames);
 export const WEIGHTS = Object.freeze(weights);
 
 for (const move of Object.values(moves)) {
+  move.implementationStatus = 'ready';
   // Only pure spell/auxiliary actions grant spell defense; contained components remain independent.
   move.hasSpell = move.type === 'spell';
   move.power ??= Object.entries(move.cost).reduce((sum, [key, n]) => sum + WEIGHTS[key] * n, 0);
@@ -113,4 +136,4 @@ for (const move of Object.values(moves)) {
 for (const def of Object.values(equipment)) Object.freeze(def);
 export const MOVES = Object.freeze(moves);
 export const EQUIPMENT = Object.freeze(equipment);
-export const RULE_VERSION = '2026-11-26';
+export const RULE_VERSION = '2026-11-26-v3';

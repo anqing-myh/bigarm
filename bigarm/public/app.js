@@ -1,4 +1,4 @@
-import { MOVES, EQUIPMENT, RESOURCE_NAMES, BASE_RESOURCE_NAMES, availableMoves } from '/rules/engine.js';
+import { MOVES, EQUIPMENT, RESOURCE_NAMES, BASE_RESOURCE_NAMES, availableMoves, shieldLabel } from '/rules/engine.js';
 import { searchMoves, blessingTotal, blessingLimit, combatChanges, statusRound } from '/interaction.js';
 
 const $ = selector => document.querySelector(selector);
@@ -17,7 +17,7 @@ const spellDescriptions = {
 };
 const specialDescriptions = {
   tripleKick: 'R3 将非指定对手发来的攻击投递改为打回原来源；可被锤锤锤取消，改目标后判互攻，自攻击不与自己抵消。',
-  sunPunch: 'R2 将非指定对手发来的小电、钻心咒反射给原来源；可被锤锤锤取消，不反射 R1 禁法或 R4 打落。',
+  sunPunch: 'R2 将非指定对手发来的有害独立法术（小电、钻心咒、诅咒）反射给原来源；可被锤锤锤取消，不反射 R1 禁法或 R4 打落。',
   ber: '互攻时克制刀。', knife: '真伤绕过普通挡伤盾；普通低点或等点仍可命中，但不能绕过 ber 克制、免疫或防法。', torch: '目标当回合出基础方盾时改为 2 伤害。',
   fireWheel: '两段各 0.5，每段命中（含打盾）获得 1 圆盾。闪只防第一段，圆盾或超闪防两段。',
   quake: '选择一人时点数 15、伤害 1；选择两名不同玩家时点数 7.5、各伤害 1。闪电盾正常免疫地震且不消耗；其他原有盾交互保留。', knifePoint: '互攻时克制成本含大臂的攻击，被其余攻击克制；镜像抵消。',
@@ -39,6 +39,12 @@ function describe(m) {
   if (spellDescriptions[m.id]) return spellDescriptions[m.id];
   if (m.type === 'equipment') {
     const d = EQUIPMENT[m.id];
+    if (d.defense) return `持有时额外获得${RESOURCE_NAMES[d.defense]}防法；实际出对应基础动作时，在回合开始移除此防护器。泡沫盾级，1盾位。`;
+    if (d.frogWard) return '泡沫盾级，1盾位；持有期间使场上出青蛙来了的人自爆。消耗4个青蛙没来招式库存。';
+    if (d.budget !== undefined) return '最多持有1面，1盾位，位于避雷针内侧、普通盾外侧。命中后结算：点数不超过剩余预算时扣预算挡住；超预算则挡一次后消失。使其消失的攻击含刀或剑则继续投递。';
+    if (d.powerBonus) return '泡沫盾级，1盾位；持有时攻击点数+4，两面可叠加为+8。';
+    if (d.powerPerLayer) return '消耗两面真实沉默之盾合成；幽灵盾级，3层，每层增加4攻击点数，剩余盾层数即盾位数。';
+    if (d.immuneShock) return '外层盾，1盾位；持有期间免疫小电，挡一次攻击后消失。';
     return d.producer ? `对应基础动作总共获得 3 个${RESOURCE_NAMES[d.producer]}。每种生产器最多 1 件，生产器总共最多 2 件。`
       : m.id === 'ghost' ? '消耗两面泡沫盾合成三层盾，每掉一层减少一盾位；通常穿泡级扣两层，穿云箭和拳打脚踢另按整盾穿透规则处理。'
       : d.immuneAll ? '免疫未明确无视或穿透雷达的攻击，可被小电移除。'
@@ -47,7 +53,7 @@ function describe(m) {
   }
   return [m.description, specialDescriptions[m.id], m.type === 'attack' && m.duration && '包含施放当回合，之后仍可正常出招；目标死亡则此持续效果消失。'].filter(Boolean).join(' ');
 }
-function cost(m) { return Object.entries(m.cost).map(([k, n]) => `${n} ${RESOURCE_NAMES[k]}`).join(' · ') || (m.id === 'ghost' ? '两面泡沫盾' : '免费'); }
+function cost(m) { return [...Object.entries(m.cost).map(([k, n]) => `${n} ${RESOURCE_NAMES[k]}`), ...Object.entries(m.materials || {}).map(([k, n]) => `${n} 面真实${EQUIPMENT[k].name}`)].join(' · ') || '免费'; }
 function avatar(seat = 0) {
   return `<div class="avatar palette-${seat % 10}"><svg viewBox="0 0 120 100" aria-hidden="true"><path d="M18 83C-3 63 8 20 29 19L41 4 51 18Q68 10 87 23L107 17 104 40Q124 87 88 92L32 92Z" fill="currentColor"/><path d="M37 52Q42 45 47 52M73 52Q78 45 83 52" fill="none" stroke="#22301d" stroke-width="5" stroke-linecap="round"/><path d="M52 65Q60 74 70 64" fill="none" stroke="#22301d" stroke-width="4" stroke-linecap="round"/><circle cx="30" cy="65" r="6" fill="#e78d8544"/><circle cx="90" cy="65" r="6" fill="#e78d8544"/></svg></div>`;
 }
@@ -123,12 +129,16 @@ function seats(room) {
 }
 function detail(m) {
   if (!m) return '';
-  return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p>${esc(describe(m))}</p>${m.type === 'attack' ? `<div class="detail-stats"><span>${m.target === 'dual' ? '7.5 / 单目标15' : m.target === 'path' ? '3、4、5…' : m.power / 10} 点</span><span>${({ single: '单目标', all: '其他所有存活者', dual: '一至两个目标', splash: '主目标及存活邻居', path: '方向路径单体' })[m.target]}</span><span>${m.air ? '可对空' : '不对空'}</span><span>防法：${m.guardRule === 'exceptDodgeAction' ? '除基础闪、超闪外的任意行动' : m.guardRule === 'ZOrSpell' ? '基础攒或纯法术/辅助行动' : m.guardRule === 'nonBasicAction' ? '任意非基础行动' : m.id === 'balance' ? '任意非基础行动' : m.id === 'sixFists' ? '防六拳合一及适用免疫' : [...m.guard].map(k => RESOURCE_NAMES[k]).join(' / ') || '无基础防法'}</span>${m.pierce?.length ? `<span>穿透：${m.pierce.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}${m.ignore?.length ? `<span>无视：${m.ignore.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}</div>` : ''}`;
+  if (m.implementationStatus !== 'ready') return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p class="fine">V3 判定待确认，暂未开放选择。</p><p>${esc(describe(m))}</p>`;
+  const actionGuards = { exceptDodgeAction: '除基础闪、超闪外的任意行动', ZOrSpell: '攒防法或纯法术/辅助行动', COrSpell: '超闪防法或纯法术/辅助行动', nonBasicAction: '任意非基础行动', basicOrAttackOnly: '装备及纯法术/辅助行动；攻击不能直接防住' };
+  const guardText = actionGuards[m.guardRule] || (m.guardByRound ? '各回合依次：' + m.guardByRound.map(g => [...g].map(k => RESOURCE_NAMES[k]).join('/')).join(' → ') : m.id === 'balance' ? '任意非基础行动' : m.id === 'sixFists' ? '防六拳合一及适用免疫' : [...(m.guard || '')].map(k => RESOURCE_NAMES[k]).join(' / ') || '无基础防法');
+  return `<b>${esc(m.name)}</b> · ${esc(cost(m))}<p>${esc(describe(m))}</p>${m.type === 'attack' ? `<div class="detail-stats"><span>${m.target === 'dual' ? '7.5 / 单目标15' : m.target === 'path' ? '3、4、5…' : m.power / 10} 点</span><span>${({ single: '单目标', all: '其他所有存活者', dual: '一至两个目标', splash: '主目标及存活邻居', path: '方向路径单体' })[m.target]}</span><span>${m.air ? '可对空' : '不对空'}</span><span>防法：${guardText}</span>${m.pierce?.length ? `<span>穿透：${m.pierce.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}${m.ignore?.length ? `<span>无视：${m.ignore.join(' / ').replace('foam', '泡级').replace('electric', '闪级').replace('radar', '雷达')}</span>` : ''}</div>` : ''}`;
 }
 function choicePanel(room) {
   const c = room.pending, mine = c.playerId === data.self.id;
-  const title = { shock: '小电生效 · 选择移除装备', shield: '攻击命中 · 选择承伤护盾', blessing: '回合末 · 分配祝福减伤', discard: '装备超限 · 选择必要弃置' }[c.kind];
+  const title = { shock: '小电生效 · 选择移除装备', shield: '攻击命中 · 选择承伤护盾', healTransfer: '天闪凌云 · 选择减伤与治疗', blessing: '伤害结算 · 选择本次祝福减伤', discard: '装备超限 · 选择必要弃置' }[c.kind];
   if (!mine) return `<section class="panel choice-panel"><h2>${title}</h2><p>等待 ${esc(nameOf(c.playerId))} 完成选择。</p><span class="clock" data-countdown></span></section>`;
+  if (c.kind === 'healTransfer') return `<section class="panel choice-panel"><h2>${title}</h2><p>选整数x=0～3：伤害变为6−2x，你另流失x点体力；${esc(nameOf(c.source))} 回复x血，超上限时提高上限。体力流失不能减免；剩余伤害再处理祝福和诅咒。</p><div class="choice-options">${c.options.map(o => `<button class="choice-option" data-act="choice" data-id="${o.id}">${esc(o.label)}</button>`).join('')}</div></section>`;
   if (c.kind === 'blessing') return `<section class="panel choice-panel blessing-panel"><h2>${title}</h2><p>可用 ${c.budget} 点，剩余 <b id="blessing-left"></b> 点。每次伤害分别减伤，至少保留大于 0 的伤害。</p><form id="blessing"><div class="blessing-events">${c.events.map(e => `<div class="blessing-event" data-event="${e.id}"><div class="blessing-heading"><b>${esc(MOVES[e.move].name)}</b><span>${esc(nameOf(e.source))} → ${e.amount} 伤害</span></div><div class="blessing-controls"><div class="blessing-shortcuts">${[1, 2, 3, 4, 5].map(n => `<button type="button" class="blessing-quick" data-act="bless" data-id="${e.id}" data-value="${n}" aria-label="${esc(MOVES[e.move].name)}减伤${n}点">${n}</button>`).join('')}</div><label>用 <input type="number" inputmode="numeric" name="${e.id}" min="0" max="${blessingLimit(c, ui.blessing, e.id)}" step="1" value="${esc(ui.blessing[e.id] ?? 0)}" required aria-label="${esc(MOVES[e.move].name)}的祝福减伤"> 点</label><button type="button" class="text-button" data-act="bless" data-id="${e.id}" data-value="0">不用</button></div><p class="fine blessing-outcome"></p></div>`).join('')}</div><p id="blessing-error" class="validation-error" role="status"></p><button class="primary-button">确认减伤</button></form></section>`;
   return `<section class="panel choice-panel"><h2>${title}</h2><p>${c.kind === 'discard' ? '每个方案均只弃置恢复上限所必要的装备。' : '从当前合法对象中选择一项，结算会继续。'}</p><div class="choice-options">${c.options.map(o => `<button class="choice-option" data-act="choice" data-id="${esc(o.id)}">${esc(o.label)}</button>`).join('')}</div></section>`;
 }
@@ -173,7 +183,7 @@ function updateBlessingControls() {
       button.hidden = Number(button.dataset.value) > max;
       button.setAttribute('aria-pressed', String(Number(button.dataset.value) === amount));
     }
-    row.querySelector('.blessing-outcome').textContent = legal ? `承受 ${event.amount - amount} 伤害${max === 0 ? ' · 当前无法再减伤' : ''}` : `请输入 0～${max} 的整数`;
+    row.querySelector('.blessing-outcome').textContent = legal ? `承受 ${(event.amount - amount) * (event.multiplier || 1)} 伤害${event.multiplier > 1 ? ' · 诅咒在减伤后翻倍' : ''}${max === 0 ? ' · 当前无法再减伤' : ''}` : `请输入 0～${max} 的整数`;
   }
   $('#blessing-error').textContent = valid ? '' : '减伤不能超过剩余祝福值，也不能将单次伤害减到 0。';
   form.querySelector('[type=submit],button.primary-button').disabled = !valid || busy;
@@ -232,7 +242,7 @@ function showRules(query = '') {
 }
 function showPlayer(id) {
   const p = data.room.players.find(p => p.id === id);
-  show(`<h2>${esc(p.name)}</h2><div class="detail-stats">${Object.entries(BASE_RESOURCE_NAMES).map(([k, name]) => `<span>${esc(name)} ${p.resources[k]}</span>`).join('')}</div><p>生命 ${p.hp} / ${p.maxHp}${p.airborne ? ' · 在空中' : ''}</p><div class="equipment-detail">${p.shields.map(s => `<p>${esc(EQUIPMENT[s.type].name)}${s.type === 'ghost' ? ` · ${s.layers} 层` : ''}</p>`).join('') || '暂无装备'}</div><div class="player-effects">${statusBadges(data.room, p) || '<p class="fine">没有持续状态</p>'}</div><h3>招式库存</h3><div class="detail-stats">${stockEntries(p).map(([key, name]) => `<span>${esc(name)} × ${p.resources[key]}</span>`).join('') || '<p class="fine">暂无招式库存</p>'}</div>`);
+  show(`<h2>${esc(p.name)}</h2><div class="detail-stats">${Object.entries(BASE_RESOURCE_NAMES).map(([k, name]) => `<span>${esc(name)} ${p.resources[k]}</span>`).join('')}</div><p>生命 ${p.hp} / ${p.maxHp}${p.airborne ? ' · 在空中' : ''}</p><div class="equipment-detail">${p.shields.map(s => `<p>${esc(shieldLabel(s))}</p>`).join('') || '暂无装备'}</div><div class="player-effects">${statusBadges(data.room, p) || '<p class="fine">没有持续状态</p>'}</div><h3>招式库存</h3><div class="detail-stats">${stockEntries(p).map(([key, name]) => `<span>${esc(name)} × ${p.resources[key]}</span>`).join('') || '<p class="fine">暂无招式库存</p>'}</div>`);
 }
 async function perform(action) {
   if (busy) return; busy = true;

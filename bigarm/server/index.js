@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { MOVES, EQUIPMENT, RESOURCE_NAMES, RULE_VERSION, createPlayer, createMatch, validateAction, beginRound, resumeRound } from '../rules/engine.js';
+import { MOVES, EQUIPMENT, RESOURCE_NAMES, RULE_VERSION, createPlayer, createMatch, validateAction, beginRound, resumeRound, ongoingTargetsRemain } from '../rules/engine.js';
 
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const fail = message => { throw new Error(message); };
@@ -108,7 +108,7 @@ export function createServer(options = {}) {
     room.match = room.job.state;
     // Network forfeits are applied at a round boundary, never inside the pure resolver.
     for (const m of room.members.filter(m => m.left)) { const p = room.match.players.find(p => p.id === m.id); if (p) p.hp = 0; }
-    room.match.ongoing = room.match.ongoing.filter(e => room.match.players.some(p => p.id === e.action.targets[0] && p.hp > 0));
+    room.match.ongoing = room.match.ongoing.filter(e => ongoingTargetsRemain(room.match, e));
     const living = room.match.players.filter(p => p.hp > 0);
     const finished = living.length <= 1, winnerId = finished && living.length ? living[0].id : null;
     room.result = { round: room.job.completedRound, finished, winnerId, logs: room.job.logs, damage: room.job.damage, lifeLoss: room.job.lifeLoss, hasDamage: room.job.hasDamage, hasLifeLoss: room.job.hasLifeLoss };
@@ -136,7 +136,7 @@ export function createServer(options = {}) {
     } else if (room.phase === 'choice') { clearTimeout(room.timer); progress(room); }
     else if (room.phase === 'reveal' && !room.result.finished) {
       const p = room.match.players.find(p => p.id === session.id); if (p) p.hp = 0;
-      room.match.ongoing = room.match.ongoing.filter(e => room.match.players.some(p => p.id === e.action.targets[0] && p.hp > 0));
+      room.match.ongoing = room.match.ongoing.filter(e => ongoingTargetsRemain(room.match, e));
       const live = room.match.players.filter(p => p.hp > 0);
       if (live.length <= 1) {
         room.result.finished = true; room.result.winnerId = live[0]?.id || null;

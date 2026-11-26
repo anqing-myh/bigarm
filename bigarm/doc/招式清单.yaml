@@ -1,8 +1,8 @@
 # 大臂招式清单：is_spell 是供人工审阅的法术分类。
 # 本表不随启动/测试自动覆盖；新增机制和招式须同步维护。
-schema_version: 2
-rule_version: "2026-11-26"
-scope: "当前全部启用招式，新增或修改招式时一并维护；原始 v2-招式.md 保留供以后补充"
+schema_version: 3
+rule_version: "2026-11-26-v3"
+scope: "全部已登记招式；implementation_status=ready 才能选用，pending_confirmation 表示等待规则确认。新增或修改招式时一并维护；原始 V2/V3 文件保留供以后补充。"
 editing: "可直接修改、批注本表供后续调整。游戏当前读取 rules/catalog.js；修改本表后须同步代码。启动和测试不会自动覆盖本文件。"
 classification:
   is_spell: "仅 category=spell 的纯法术/辅助行动为真；攻击即使含独立法术或命中效果组件也为假，此分类不删除其法术组件。"
@@ -21,6 +21,19 @@ classification:
     ghostDodge: 0
     chainDodge: 0
     voidDodge: 0
+damage_pipeline:
+  - "clash"
+  - "air"
+  - "ordinary_immunity"
+  - "guard"
+  - "himalaya_first_hit_segment"
+  - "held_shields_including_plastic"
+  - "sky_heal_transfer"
+  - "per_event_integer_blessing"
+  - "curse_multiplier"
+  - "immediate_hp_loss"
+  - "immediate_capped_drain"
+  - "on_hit_callback"
 resources:
   B:
     name: "大臂"
@@ -262,6 +275,56 @@ resources:
     value_points: 17.5
     storage: "move_inventory"
     real_shield: false
+  frogArrival:
+    name: "青蛙来了"
+    value_points: 22.5
+    storage: "move_inventory"
+    real_shield: false
+  skyDodge:
+    name: "天闪凌云"
+    value_points: 26.5
+    storage: "move_inventory"
+    real_shield: false
+  fiveDarts:
+    name: "五连镖"
+    value_points: 9.5
+    storage: "move_inventory"
+    real_shield: false
+  jingXiaoPeng:
+    name: "荆霄鹏"
+    value_points: 10.5
+    storage: "move_inventory"
+    real_shield: false
+  roamingGun:
+    name: "漫游之枪"
+    value_points: 10
+    storage: "move_inventory"
+    real_shield: false
+  solar:
+    name: "日曜"
+    value_points: 8
+    storage: "move_inventory"
+    real_shield: false
+  sunStorm:
+    name: "万阳凌空"
+    value_points: 16
+    storage: "move_inventory"
+    real_shield: false
+  samadhiFire:
+    name: "三昧真火"
+    value_points: 6
+    storage: "move_inventory"
+    real_shield: false
+  voidBlade:
+    name: "虚无利刃"
+    value_points: 19
+    storage: "move_inventory"
+    real_shield: false
+  giantWave:
+    name: "巨浪炮"
+    value_points: 12
+    storage: "move_inventory"
+    real_shield: false
   foam:
     name: "泡沫盾"
     value_points: 2.5
@@ -317,6 +380,61 @@ resources:
     value_points: 8.4
     storage: "move_inventory"
     real_shield: false
+  frogBarrier:
+    name: "青蛙来不了"
+    value_points: 0
+    storage: "move_inventory"
+    real_shield: false
+  protectorB:
+    name: "大臂防护器"
+    value_points: 5
+    storage: "move_inventory"
+    real_shield: false
+  protectorZ:
+    name: "攒攒防护器"
+    value_points: 4
+    storage: "move_inventory"
+    real_shield: false
+  protectorF:
+    name: "方盾防护器"
+    value_points: 7.5
+    storage: "move_inventory"
+    real_shield: false
+  protectorY:
+    name: "圆盾防护器"
+    value_points: 10
+    storage: "move_inventory"
+    real_shield: false
+  protectorS:
+    name: "闪的防护器"
+    value_points: 12.5
+    storage: "move_inventory"
+    real_shield: false
+  protectorC:
+    name: "超闪防护器"
+    value_points: 17.5
+    storage: "move_inventory"
+    real_shield: false
+  plastic:
+    name: "塑料盾"
+    value_points: 7
+    storage: "move_inventory"
+    real_shield: false
+  silenceShield:
+    name: "沉默之盾"
+    value_points: 9
+    storage: "move_inventory"
+    real_shield: false
+  annihilationShield:
+    name: "寂灭之盾"
+    value_points: 18
+    storage: "move_inventory"
+    real_shield: false
+  lightningRod:
+    name: "避雷针"
+    value_points: 11.5
+    storage: "move_inventory"
+    real_shield: false
   shock:
     name: "小电"
     value_points: 7
@@ -367,10 +485,31 @@ resources:
     value_points: 17.5
     storage: "move_inventory"
     real_shield: false
+  frogAbsent:
+    name: "青蛙没来"
+    value_points: 0
+    storage: "move_inventory"
+    real_shield: false
+  himalaya:
+    name: "喜马拉雅闪"
+    value_points: 5
+    storage: "move_inventory"
+    real_shield: false
+  sixMind:
+    name: "六神无主"
+    value_points: 4.8
+    storage: "move_inventory"
+    real_shield: false
+  damageCurse:
+    name: "诅咒"
+    value_points: 6.5
+    storage: "move_inventory"
+    real_shield: false
 moves:
   basicB:
     name: "大臂"
     category: "basic"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -398,10 +537,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "获得 1 个大臂，提供本回合对应防法。"
   basicZ:
     name: "攒"
     category: "basic"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -429,10 +570,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "获得 1 个攒，提供本回合对应防法。"
   basicF:
     name: "方盾"
     category: "basic"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -460,10 +603,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "获得 1 个方盾，提供本回合对应防法。"
   basicY:
     name: "圆盾"
     category: "basic"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -491,10 +636,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "获得 1 个圆盾，提供本回合对应防法。"
   basicS:
     name: "闪"
     category: "basic"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -522,10 +669,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "获得 1 个闪，提供本回合对应防法。"
   basicC:
     name: "超闪"
     category: "basic"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -553,10 +702,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "获得 1 个超闪，提供本回合对应防法。"
   punch:
     name: "拳"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -588,6 +739,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -621,10 +783,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 1 点 · 1 伤害"
   kick:
     name: "踹"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -656,6 +820,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -690,10 +865,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 6 点 · 1 伤害"
   ber:
     name: "ber"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -725,6 +902,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -758,10 +946,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 0.8 点 · 1 伤害"
   knife:
     name: "刀"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -794,6 +984,17 @@ moves:
       damage_segments:
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -827,10 +1028,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 3.5 点 · 0.5 伤害"
   wave:
     name: "海浪"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -862,6 +1065,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -894,10 +1108,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 3 点 · 1 伤害"
   torch:
     name: "火炬"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -929,6 +1145,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "torch"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage:
         target_actual_basic_F: 2
       anti_air: false
@@ -963,10 +1190,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 2 点 · 1 伤害"
   tsunami:
     name: "海啸"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -998,6 +1227,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1031,10 +1271,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 4.5 点 · 1 伤害"
   fireWheel:
     name: "火轮"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1067,6 +1309,17 @@ moves:
         - 0.5
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1107,10 +1360,12 @@ moves:
       cancelled_by_hammer: false
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 4 点 · 0.5＋0.5 伤害"
   arrows:
     name: "万箭齐发"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1143,6 +1398,17 @@ moves:
         - 1
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1176,10 +1442,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 5 点 · 1＋0.5 伤害"
   smallWave:
     name: "小海波"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1211,6 +1479,17 @@ moves:
       damage_segments:
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1244,10 +1523,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 1.5 点 · 0.5 伤害"
   dart:
     name: "镖"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1279,6 +1560,17 @@ moves:
       damage_segments:
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1311,10 +1603,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 1.5 点 · 0.5 伤害"
   smallWheel:
     name: "小火轮"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1346,6 +1640,17 @@ moves:
       damage_segments:
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1379,10 +1684,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 2 点 · 0.5 伤害"
   quake:
     name: "地震"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1414,6 +1721,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1450,10 +1768,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 7.5 点 · 1 伤害"
   tripleKick:
     name: "三连踹"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1486,6 +1806,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1528,10 +1859,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 3.5 点 · 2 伤害"
   sunPunch:
     name: "太阳拳"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1564,6 +1897,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1607,10 +1951,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 4 点 · 1 伤害"
   comboPunch:
     name: "连环拳"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1642,6 +1988,17 @@ moves:
       damage_segments:
         - 3
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1673,10 +2030,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 5 点 · 3 伤害"
   dragonSword:
     name: "青龙剑"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1709,6 +2068,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1742,10 +2112,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 7 点 · 2 伤害"
   knifePoint:
     name: "刀点刀"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1779,6 +2151,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1809,10 +2192,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 7.5 点 · 2 伤害"
   sickle:
     name: "镰刀"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1845,6 +2230,17 @@ moves:
         - 0.5
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -1879,10 +2275,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 1.6 点 · 0.5＋0.5 伤害"
   sixFists:
     name: "六拳合一"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1915,6 +2313,17 @@ moves:
       damage_segments:
         - 7
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -1947,10 +2356,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 14 点 · 7 伤害"
   boomerang:
     name: "回旋镖"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -1982,6 +2393,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2015,10 +2437,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 3 点 · 1 伤害"
   skyCannon:
     name: "冲天炮"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2052,6 +2476,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2084,10 +2519,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 5.3 点 · 1 伤害 · 持续 3 回合"
   skyDrill:
     name: "冲天钻"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2121,6 +2558,17 @@ moves:
       damage_segments:
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2153,10 +2601,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 4.3 点 · 0.5 伤害 · 持续 4 回合"
   dragonBlade:
     name: "青龙偃月刀"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2189,6 +2639,17 @@ moves:
       damage_segments:
         - 3
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -2222,10 +2683,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 10.5 点 · 3 伤害"
   phoenix:
     name: "凤鸣九天"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2261,6 +2724,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2301,10 +2775,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 20 点 · 2 伤害"
   phoenixFlame:
     name: "凤之烈焰"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2336,6 +2812,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage:
         primary: 2
         neighbors: 1
@@ -2371,10 +2858,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 9 点 · 2 伤害"
   phoenixStar:
     name: "凤之长星"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2406,6 +2895,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2439,10 +2939,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 9 点 · 1 伤害 · 持续 5 回合"
   meteor:
     name: "流星锤"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2474,6 +2976,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2512,10 +3025,12 @@ moves:
       skip_if_intrinsic_damage_immunity_level_at_least: 1
       merge_events: false
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 7.5 点 · 2 伤害"
   staff:
     name: "少林棍"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2547,6 +3062,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -2582,10 +3108,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 10 点 · 2 伤害"
   sword:
     name: "剑"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2617,6 +3145,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -2651,10 +3190,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 2 点 · 2 伤害"
   upheaval:
     name: "天翻地覆"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2691,6 +3232,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2729,10 +3281,12 @@ moves:
       cancelled_by_hammer: false
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 11.3 点 · 2 伤害"
   balance:
     name: "均衡之刃"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2769,6 +3323,17 @@ moves:
       damage_segments:
         - 0
       damage_rule: "balance"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage:
         B: 1
         Z: 0.5
@@ -2805,10 +3370,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 11.3 点 · 0 伤害"
   gun:
     name: "枪"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2840,6 +3407,17 @@ moves:
       damage_segments:
         - 0.5
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2870,10 +3448,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 0.8 点 · 0.5 伤害"
   flyingKnife:
     name: "飞刀"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2905,6 +3485,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -2937,10 +3528,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 2.5 点 · 1 伤害"
   cloudArrow:
     name: "穿云箭"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -2977,6 +3570,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -3010,10 +3614,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 5.5 点 · 1 伤害"
   punchKick:
     name: "拳打脚踢"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3047,6 +3653,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -3081,10 +3698,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 6.5 点 · 2 伤害"
   arcLight:
     name: "弧光"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3118,6 +3737,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -3151,10 +3781,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 6.5 点 · 1 伤害"
   hammer3:
     name: "锤锤锤"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3188,6 +3820,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -3233,10 +3876,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "物理攻击 · 4.5 点 · 1 伤害"
   ghostArrows:
     name: "幽灵万箭齐发"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3268,6 +3913,17 @@ moves:
       damage_segments:
         - 2
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -3300,10 +3956,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 16 点 · 2 伤害"
   ghostSword:
     name: "幽灵毁灭之剑"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3335,6 +3993,17 @@ moves:
       damage_segments:
         - 6
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: false
       guard:
@@ -3366,10 +4035,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 16 点 · 6 伤害"
   ghostFinisher:
     name: "幽灵必杀"
     category: "attack"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3402,6 +4073,17 @@ moves:
       damage_segments:
         - 1
       damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
       conditional_damage: null
       anti_air: true
       guard:
@@ -3432,10 +4114,842 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "法术攻击 · 17.5 点 · 1 伤害"
+  frogArrival:
+    name: "青蛙来了"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        S: 9
+      real_shields: {}
+    stock_gain:
+      resource: "frogArrival"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 22.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 22.5
+      power_rule: "fixed"
+      damage_segments:
+        - 9
+      damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion:
+        life_loss: 2
+        no_cost: true
+        requires_R0_affordability: true
+        cancels_attack_and_stock_gain: true
+        preserves_intrinsic_protection_and_old_effects: true
+        timing: "R1c_after_silence_before_stock"
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "Y"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体9物理伤害，圆盾防；青蛙没来或青蛙来不了可导致自身自爆。"
+  skyDodge:
+    name: "天闪凌云"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        S: 5
+        C: 4
+      real_shields: {}
+    stock_gain:
+      resource: "skyDodge"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 26.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 26.5
+      power_rule: "fixed"
+      damage_segments:
+        - 6
+      damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing:
+        integer: true
+        min: 0
+        max: 3
+        damage_after_choice: "base_damage_minus_x_times_damage_reduction_per_unit"
+        damage_reduction_per_unit: 2
+        recipient_life_loss_per_unit: 1
+        source_healing_per_unit: 1
+        life_loss_is_damage: false
+        choice_effect_order:
+          - "recipient_life_loss"
+          - "source_healing"
+        raises_max_hp: true
+        timing: "R4_after_shields_before_blessing_and_curse"
+        choice_effects_exactly_once_across_continuations: true
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "S"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体6法术伤害，闪防、对空；受击者选0至3整数x，伤害改为6−2x，自身流失x体力，来源恢复x生命并按需提高生命上限。"
+  fiveDarts:
+    name: "五连镖"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        B: 2
+        F: 5
+      real_shields: {}
+    stock_gain:
+      resource: "fiveDarts"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 9.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 9.5
+      power_rule: "fixed"
+      damage_segments:
+        - 5
+      damage_rule: "fiveDarts"
+      damage_calculation:
+        actual_S: 1
+        actual_F_or_Y: 3
+        other: 5
+        segments: 1
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses: []
+        action_rule: "COrSpell"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体一次物理伤害、对空；超闪或纯法术防，实际闪受1伤、方盾/圆盾受3伤、其他受5伤。"
+  jingXiaoPeng:
+    name: "荆霄鹏"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        F: 7
+      real_shields: {}
+    stock_gain:
+      resource: "jingXiaoPeng"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 10.5
+      power_rule: "fixed"
+      damage_segments:
+        - 2
+      damage_rule: "targetAttackFour"
+      damage_calculation:
+        target_selected_attack_action: 4
+        otherwise: 2
+        requires_reverse_targeting: false
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses: []
+        action_rule: "basicOrAttackOnly"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体物理伤害；目标当回合选攻击时4伤，无须指向自己；其他非资源行动防，基础资源行动受2伤。"
+  roamingGun:
+    name: "漫游之枪"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        S: 4
+      real_shields: {}
+    stock_gain:
+      resource: "roamingGun"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 10
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "remainingS"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation:
+        count: "source_S_inventory_after_costs_and_gains_at_R3"
+        damage_each: 0.5
+        zero_inventory_zero_segments: true
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: false
+      guard:
+        basic_defenses:
+          - "S"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体物理伤害，闪/超闪防；支付4S后每剩余1个闪，产生独立一段0.5伤害，0个则0段。"
+  solar:
+    name: "日曜"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        Y: 4
+      real_shields: {}
+    stock_gain:
+      resource: "solar"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 8
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 8
+      power_rule: "fixed"
+      damage_segments:
+        - 0
+      damage_rule: "roundY"
+      damage_calculation: "count_of_round_participants_whose_actual_action_is_basicY; zero_is_still_a_hit"
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "B"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "群体法术伤害、对空，大臂/超闪防；伤害为本回合实际出圆盾的人数，0伤仍可命中消耗盾。"
+  sunStorm:
+    name: "万阳凌空"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        solar: 2
+      real_shields: {}
+    stock_gain:
+      resource: "sunStorm"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 16
+    target: "all"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 16
+      power_rule: "fixed"
+      damage_segments:
+        - 0.5
+      damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain:
+        heal_equal_actual_damage: true
+        timing: "R4_immediately_after_curse_multiplied_actual_damage"
+        capped_at_max_hp: true
+        revives_previous_round_dead_source: false
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "Y"
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 4
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "群体0.5法术伤害、对空，圆盾/超闪防；含当回合持续4回合，实际伤害等量即时治疗自身，受生命上限限制。"
+  samadhiFire:
+    name: "三昧真火"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        Y: 3
+      real_shields: {}
+    stock_gain:
+      resource: "samadhiFire"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 6
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 6
+      power_rule: "fixed"
+      damage_segments:
+        - 1
+      damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round:
+        - "C"
+        - "SC"
+        - "YSC"
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 3
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体法术伤害、对空；连续3回合各1伤，防法依次为超闪、闪/超闪、圆盾/闪/超闪。"
+  voidBlade:
+    name: "虚无利刃"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        voidDodge: 2
+      real_shields: {}
+    stock_gain:
+      resource: "voidBlade"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 19
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "magic"
+      damage_level: 1
+      power_points: 0
+      power_rule: "fixed"
+      damage_segments:
+        - 0
+      damage_rule: "fixed"
+      damage_calculation: null
+      guard_by_elapsed_round: null
+      segments_rule: "targetShieldLayers"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: false
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "Z"
+        action_rule: "ZOrSpell"
+        action_rule_reads_original_identity_even_if_spell_cancelled: true
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体法术攻击、对空，基础0点、允许盾加点，攒防法或纯法术防；R3固定目标真实盾剩余层数，生成同样段数的0伤害。"
+  giantWave:
+    name: "巨浪炮"
+    category: "attack"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        wave: 4
+      real_shields: {}
+    stock_gain:
+      resource: "giantWave"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 12
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack:
+      attribute: "physical"
+      damage_level: 1
+      power_points: 12
+      power_rule: "fixed"
+      damage_segments:
+        - 0
+      damage_rule: "freeSlots"
+      damage_calculation: "max(0, 5 - source_occupied_shield_slots_at_R3)"
+      guard_by_elapsed_round: null
+      segments_rule: "damage_segments"
+      zero_segment_attacks: "retain_target_and_power_for_clash_but_do_not_deliver_damage_or_consume_shields"
+      segment_calculation: null
+      power_bonus_from_held_equipment: "sum_of_fixed_bonus_and_per_remaining_layer_bonus_at_R3"
+      strictly_presses: "has_reverse_attack_targeting_source_with_strictly_lower_power_after_retarget"
+      true_damage_if_strictly_presses: true
+      transfer_damage_to_source_healing: null
+      drain: null
+      self_explosion: null
+      conditional_damage: null
+      anti_air: true
+      guard:
+        basic_defenses:
+          - "C"
+        action_rule: null
+        action_rule_reads_original_identity_even_if_spell_cancelled: false
+        first_segment_only_defense: null
+        dedicated_guard: null
+      shield_interaction:
+        true_damage: false
+        ignore: []
+        pierce: []
+        pierce_exceptions: []
+        ghost_pierce: "normal_one_layer_or_foam_pierce_two_layers"
+        splash_neighbors_inherit_pierce: false
+      clash:
+        special_rule: null
+        numeric_fallback: false
+        reverse_numeric_comparison_if_either_side_has_flag: false
+        reversal_changes_attack_order: false
+      schedule:
+        start_offset: 0
+        rounds: 1
+        original_target_locked: true
+        survives_source_death: true
+        removed_when_target_dies: true
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "单体物理攻击、对空，超闪防；伤害=max(0,5-自身使用盾位)，点压对手时变为真伤。"
   foam:
     name: "泡沫盾"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3471,10 +4985,12 @@ moves:
       slots: 1
       position: 3
       electric: false
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   ghost:
     name: "幽灵盾"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3512,10 +5028,12 @@ moves:
       layers: 3
       materials:
         foam: 2
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   lightning:
     name: "闪电盾"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3552,10 +5070,12 @@ moves:
       position: 3
       electric: true
       immuneResource: "S"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   thunder:
     name: "雷电盾"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3592,10 +5112,12 @@ moves:
       position: 3
       electric: true
       immuneResource: "C"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   ocean:
     name: "海神盾"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3632,10 +5154,12 @@ moves:
       position: 3
       electric: true
       immuneResource: "F"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   flame:
     name: "烈焰盾"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3673,10 +5197,12 @@ moves:
       electric: true
       immuneResource: "Y"
       immuneMove: "phoenixFlame"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   producerB:
     name: "大臂生产器"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3712,10 +5238,12 @@ moves:
       position: 4
       electric: true
       producer: "B"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   producerZ:
     name: "攒攒生产器"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3751,10 +5279,12 @@ moves:
       position: 4
       electric: true
       producer: "Z"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   producerF:
     name: "方盾生产器"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3790,10 +5320,12 @@ moves:
       position: 4
       electric: true
       producer: "F"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   producerY:
     name: "圆盾生产器"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3829,10 +5361,12 @@ moves:
       position: 4
       electric: true
       producer: "Y"
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   radar:
     name: "雷达"
     category: "equipment"
+    implementation_status: "ready"
     is_spell: false
     spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
     cost:
@@ -3869,10 +5403,491 @@ moves:
       position: 3
       electric: true
       immuneAll: true
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  frogBarrier:
+    name: "青蛙来不了"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        frogAbsent: 4
+      real_shields: {}
+    stock_gain:
+      resource: "frogBarrier"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 0
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "frogBarrier"
+      name: "青蛙来不了"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      frogWard: true
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  protectorB:
+    name: "大臂防护器"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        B: 5
+      real_shields: {}
+    stock_gain:
+      resource: "protectorB"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "protectorB"
+      name: "大臂防护器"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      defense: "B"
+      breakOnResource: "B"
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  protectorZ:
+    name: "攒攒防护器"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        Z: 5
+      real_shields: {}
+    stock_gain:
+      resource: "protectorZ"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "protectorZ"
+      name: "攒攒防护器"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      defense: "Z"
+      breakOnResource: "Z"
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  protectorF:
+    name: "方盾防护器"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        F: 5
+      real_shields: {}
+    stock_gain:
+      resource: "protectorF"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "protectorF"
+      name: "方盾防护器"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      defense: "F"
+      breakOnResource: "F"
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  protectorY:
+    name: "圆盾防护器"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        Y: 5
+      real_shields: {}
+    stock_gain:
+      resource: "protectorY"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 10
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "protectorY"
+      name: "圆盾防护器"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      defense: "Y"
+      breakOnResource: "Y"
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  protectorS:
+    name: "闪的防护器"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        S: 5
+      real_shields: {}
+    stock_gain:
+      resource: "protectorS"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 12.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "protectorS"
+      name: "闪的防护器"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      defense: "S"
+      breakOnResource: "S"
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  protectorC:
+    name: "超闪防护器"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        C: 5
+      real_shields: {}
+    stock_gain:
+      resource: "protectorC"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 17.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "protectorC"
+      name: "超闪防护器"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      defense: "C"
+      breakOnResource: "C"
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  plastic:
+    name: "塑料盾"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        B: 3
+        Z: 5
+      real_shields: {}
+    stock_gain:
+      resource: "plastic"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 7
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "plastic"
+      name: "塑料盾"
+      grade: "plastic"
+      slots: 1
+      position: 2.5
+      electric: false
+      budget: 80
+      maxCount: 1
+      enforceOnCreate: true
+    equipment_resolution:
+      stage: "R4_after_guard_and_himalaya"
+      initial_budget_points: 8
+      comparison: "hit_power_at_most_remaining_budget"
+      budget_cost_per_segment: "hit_power"
+      over_budget_ordinary_hit: "blocks_once_then_destroyed"
+      broken_by_name_containing_any:
+        - "剑"
+        - "刀"
+      breaking_named_hit_continues: true
+      true_damage: "budget_immunity_applies_but_over_budget_normal_block_is_skipped"
+      max_simultaneously_held: 1
+      can_create_while_already_held: false
+    description: "制造持有装备，攻击前生效。"
+  silenceShield:
+    name: "沉默之盾"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        F: 2
+        S: 1
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "silenceShield"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 9
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "silenceShield"
+      name: "沉默之盾"
+      grade: "foam"
+      slots: 1
+      position: 3
+      electric: false
+      powerBonus: 40
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  annihilationShield:
+    name: "寂灭之盾"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory: {}
+      real_shields:
+        silenceShield: 2
+    stock_gain:
+      resource: "annihilationShield"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 18
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "annihilationShield"
+      name: "寂灭之盾"
+      grade: "ghost"
+      slots: 3
+      position: 3
+      electric: false
+      layers: 3
+      materials:
+        silenceShield: 2
+      powerPerLayer: 40
+    equipment_resolution: null
+    description: "制造持有装备，攻击前生效。"
+  lightningRod:
+    name: "避雷针"
+    category: "equipment"
+    implementation_status: "ready"
+    is_spell: false
+    spell_classification_note: "非纯法术/辅助行动，不算法术；仍可含独立法术或命中效果组件"
+    cost:
+      inventory:
+        B: 3
+        S: 2
+        C: 1
+      real_shields: {}
+    stock_gain:
+      resource: "lightningRod"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: false
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 11.5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components: []
+    on_hit: null
+    on_block: null
+    equipment:
+      id: "lightningRod"
+      name: "避雷针"
+      grade: "outer"
+      slots: 1
+      position: 2
+      electric: false
+      immuneShock: true
+    equipment_resolution: null
     description: "制造持有装备，攻击前生效。"
   shock:
     name: "小电"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -3909,10 +5924,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   phoenixGuard:
     name: "凤之守护"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -3941,10 +5958,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   ghostDodge:
     name: "幽灵闪"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -3987,10 +6006,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   chainDodge:
     name: "连环闪"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4031,10 +6052,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   voidDodge:
     name: "虚无闪"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4091,10 +6114,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   thunderDodge:
     name: "雷闪"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4123,10 +6148,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   heal:
     name: "回一滴血"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4162,10 +6189,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   guardSix:
     name: "防六拳合一"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4201,10 +6230,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   axi:
     name: "阿西吧"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4233,10 +6264,12 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
   crucio:
     name: "钻心咒"
     category: "spell"
+    implementation_status: "ready"
     is_spell: true
     spell_classification_note: "纯法术/辅助行动，算法术"
     cost:
@@ -4284,4 +6317,181 @@ moves:
     on_hit: null
     on_block: null
     equipment: null
+    equipment_resolution: null
     description: "攻击前施放法术。"
+  frogAbsent:
+    name: "青蛙没来"
+    category: "spell"
+    implementation_status: "ready"
+    is_spell: true
+    spell_classification_note: "纯法术/辅助行动，算法术"
+    cost:
+      inventory: {}
+      real_shields: {}
+    stock_gain:
+      resource: "frogAbsent"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 0
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R1c_after_silence_before_stock"
+        cancelled_by_hammer: true
+        kind: "force_frog_explosion"
+        activation_timing: "after_all_new_shields_and_silence_before_shock"
+        requires_hit: false
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "无消耗防御性法术，使本回合场上出青蛙来了的玩家自爆。"
+  himalaya:
+    name: "喜马拉雅闪"
+    category: "spell"
+    implementation_status: "ready"
+    is_spell: true
+    spell_classification_note: "纯法术/辅助行动，算法术"
+    cost:
+      inventory:
+        S: 2
+      real_shields: {}
+    stock_gain:
+      resource: "himalaya"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 5
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "immune_first_attack_segment"
+        counting_boundary: "R4_after_clash_air_other_immunity_and_guard_before_shield_or_hp_resolution"
+        duration_rounds: 1
+        miss_or_block_consumes: false
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "免疫当回合第一段命中攻击；被压制、落空、其他免疫或基础防法挡住的不计，在判定耗盾或掉血前生效。"
+  sixMind:
+    name: "六神无主"
+    category: "spell"
+    implementation_status: "ready"
+    is_spell: true
+    spell_classification_note: "纯法术/辅助行动，算法术"
+    cost:
+      inventory:
+        Z: 6
+      real_shields: {}
+    stock_gain:
+      resource: "sixMind"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 4.8
+    target: "self"
+    intrinsic:
+      damage_immunity_level: 1
+      conditional_damage_immunity: null
+      control_immunity_level: 1
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "self"
+        status: "sixMind"
+        start_offset: 0
+        duration_rounds: 15
+        immune_attack_name_contains_any: "零一二三四五六七八九十百千万"
+        refresh: "max_remaining_duration"
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "当回合无敌；含当回合持续15回合，免疫名称含零一二三四五六七八九十百千万的攻击。"
+  damageCurse:
+    name: "诅咒"
+    category: "spell"
+    implementation_status: "ready"
+    is_spell: true
+    spell_classification_note: "纯法术/辅助行动，算法术"
+    cost:
+      inventory:
+        B: 2
+        Y: 1
+        S: 1
+      real_shields: {}
+    stock_gain:
+      resource: "damageCurse"
+      amount: 1
+      producer_total: null
+      stage: "R1d"
+      cancelled_when_new_spell_component_is_silenced: true
+      independent_of_real_shields_and_statuses: true
+    resource_value_points: 6.5
+    target: "single"
+    intrinsic:
+      damage_immunity_level: 0
+      conditional_damage_immunity: null
+      control_immunity_level: 0
+      basic_defense: null
+      start_of_round_life_loss: 0
+      life_loss_is_damage: false
+      intrinsic_cancelled_by_hammer: false
+    attack: null
+    independent_spell_components:
+      -
+        stage: "R2"
+        cancelled_by_hammer: true
+        kind: "named_status"
+        target: "selected_opponent"
+        level: 1
+        status: "damageCurse"
+        positive: false
+        start_offset: 1
+        duration_rounds: 3
+        damage_multiplier: 2
+        multiplier_after:
+          - "sky_heal_transfer"
+          - "per_event_blessing"
+        applies_to_life_loss: false
+        refresh: "max_remaining_duration_not_multiple_stacks"
+    on_hit: null
+    on_block: null
+    equipment: null
+    equipment_resolution: null
+    description: "指定其他一人，从下回合开始3回合，其非流失体力的受伤加倍，同名状态不叠加。"
