@@ -44,7 +44,7 @@ export function catalogDocument() {
         conditional_damage: m.damageRule === 'balance' ? { B: 1, Z: 0.5, F: 1.5, Y: 2, S: 2.5, C: 3.5 } : m.damageRule === 'torch' ? { target_actual_basic_F: 2 } : m.target === 'splash' ? { primary: 2, neighbors: 1 } : null,
         anti_air: m.air,
         guard: { basic_defenses: [...m.guard], action_rule: m.guardRule || (m.damageRule === 'balance' ? 'nonBasicAction' : null), action_rule_reads_original_identity_even_if_spell_cancelled: !!m.guardRule || m.damageRule === 'balance', first_segment_only_defense: m.firstOnly || null, dedicated_guard: m.id === 'sixFists' ? 'guardSix' : null },
-        shield_interaction: { true_damage: !!m.trueDamage, ignore: m.ignore || [], pierce: m.pierce || [], ghost_pierce: m.ghostPierce === 'whole' ? 'consume_whole_full_ghost_and_stop_partial_ghost_and_continue' : 'normal_one_layer_or_foam_pierce_two_layers', splash_neighbors_inherit_pierce: false },
+        shield_interaction: { true_damage: !!m.trueDamage, ignore: m.ignore || [], pierce: m.pierce || [], pierce_exceptions: m.pierceExceptions || [], ghost_pierce: m.ghostPierce === 'whole' ? 'consume_whole_full_ghost_and_stop_partial_ghost_and_continue' : 'normal_one_layer_or_foam_pierce_two_layers', splash_neighbors_inherit_pierce: false },
         clash: { special_rule: m.clash || (m.id === 'ber' ? 'beats_knife' : null), numeric_fallback: !!m.fallback, reverse_numeric_comparison_if_either_side_has_flag: !!m.reverseClash, reversal_changes_attack_order: false },
         schedule: { start_offset: m.delay || 0, rounds: m.duration || 1, original_target_locked: true, survives_source_death: true, removed_when_target_dies: true },
       },

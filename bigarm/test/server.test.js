@@ -96,7 +96,7 @@ test('choosing endpoints reject spectators, stale rounds and missing continuatio
 test('real mid-round shield choice is owned, resumable, visible and charged once', async t => {
   const f = await fixture(t), { a, b } = await f.room();
   let s = await f.state(a.token);
-  for (const move of ['basicB', 'basicF', 'foam', 'basicB', 'basicF', 'foam']) {
+  for (const move of ['basicB', 'basicF', 'foam', 'basicB', 'basicF', 'foam', 'ghost', 'basicB', 'basicF', 'foam']) {
     const round = s.room.round;
     await f.api('/api/game/action', { round, move: 'basicB' }, a.token);
     await f.api('/api/game/action', { round, move }, b.token);
@@ -116,7 +116,7 @@ test('real mid-round shield choice is owned, resumable, visible and charged once
   await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options[0].id }, watcher.token, 400);
   await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options[0].id }, a.token, 400);
   await f.api('/api/game/choice', { round: round - 1, requestId: c.id, answer: c.options[0].id }, b.token, 400);
-  await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options[0].id }, b.token);
+  await f.api('/api/game/choice', { round, requestId: c.id, answer: c.options.find(o => o.label === '泡沫盾').id }, b.token);
   s = await f.wait(a.token, x => x.room.phase === 'selecting' && x.room.round > round);
   assert.equal(s.room.players.find(p => p.id === a.self.id).resources.B, before - 1);
   assert.equal(s.room.players.find(p => p.id === b.self.id).shields.length, 1);

@@ -57,12 +57,21 @@ export function equipmentLegal(shields) {
     && shields.filter(s => EQUIPMENT[s.type].grade === 'electric').length <= 2
     && shields.filter(s => EQUIPMENT[s.type].producer).length <= 2;
 }
+function shieldKey(shield) {
+  return JSON.stringify(Object.keys(shield).filter(k => k !== 'id').sort().map(k => [k, shield[k]]));
+}
+function distinctShieldOptions(p, options) {
+  const seen = new Set();
+  return options.filter(o => { const key = shieldKey(p.shields.find(s => s.id === o.id)); if (seen.has(key)) return false; seen.add(key); return true; });
+}
 function discardOptions(p) {
   const options = [];
+  const seen = new Set();
   // R0 has <=5 slots, one new action creates <=3 more; at most 8 instances.
   for (let mask = 1; mask < 2 ** p.shields.length; mask++) {
     const gone = p.shields.filter((_, i) => mask & 2 ** i), keep = p.shields.filter((_, i) => !(mask & 2 ** i));
-    if (equipmentLegal(keep) && gone.every(s => !equipmentLegal([...keep, s]))) options.push({ id: gone.map(s => s.id).join(','), label: gone.map(s => EQUIPMENT[s.type].name).join('、'), shieldIds: gone.map(s => s.id) });
+    const key = JSON.stringify(keep.map(shieldKey).sort());
+    if (equipmentLegal(keep) && gone.every(s => !equipmentLegal([...keep, s])) && !seen.has(key)) { seen.add(key); options.push({ id: gone.map(s => s.id).join(','), label: gone.map(s => EQUIPMENT[s.type].name + (s.type === 'ghost' ? `（${s.layers}层）` : '')).join('、'), shieldIds: gone.map(s => s.id) }); }
   }
   return options;
 }
@@ -72,6 +81,7 @@ function request(job, kind, id, options, extra = {}) {
   return job;
 }
 function chooseShield(job, p, kind, options, extra) {
+  options = distinctShieldOptions(p, options);
   if (options.length === 1) return options[0].id;
   request(job, kind, p.id, options, extra); return null;
 }
@@ -94,7 +104,7 @@ function loseLife(job, target, amount, move, source = target.id) {
 function shieldInteraction(hit, s) {
   const grade = EQUIPMENT[s.type].grade, isFoam = grade === 'foam' || grade === 'ghost';
   if ((hit.ignore || []).some(g => g === grade || (g === 'foam' && isFoam))) return 'ignore';
-  if ((hit.pierce || []).some(g => g === grade || (g === 'foam' && isFoam))) return 'pierce';
+  if (!(MOVES[hit.move].pierceExceptions || []).includes(s.type) && (hit.pierce || []).some(g => g === grade || (g === 'foam' && isFoam))) return 'pierce';
   return 'normal';
 }
 function isImmune(job, p, hit) {
@@ -280,7 +290,12 @@ function advance(job) {
     if (job.phase === 'discard') {
       const p = job.state.players[job.cursor];
       if (p) {
-        if (p.hp > 0 && !equipmentLegal(p.shields)) return request(job, 'discard', p.id, discardOptions(p));
+        if (p.hp > 0 && !equipmentLegal(p.shields)) {
+          const options = discardOptions(p);
+          if (options.length > 1) return request(job, 'discard', p.id, options);
+          p.shields = p.shields.filter(s => !options[0].shieldIds.includes(s.id));
+          log(job, 'discard', `${p.name} 弃置 ${options[0].label}。`);
+        }
         job.cursor++; continue;
       }
       const survivors = alive(job.state);

@@ -17,6 +17,35 @@ function finish(job) {
 }
 const battle = (input, actions) => finish(beginRound(input, actions));
 
+test('V2 identical shields automatically resolve hits, shock and necessary discard', () => {
+  for (const type of ['foam', 'ghost']) {
+    const input = state(); addShield(input, input.players[1], type); addShield(input, input.players[1], type);
+    const j = beginRound(input, { a: action('punch', 'b'), b: action('basicB') });
+    assert.equal(j.status, 'complete', type);
+    assert.equal(j.logs.filter(e => e.type === 'hit').length, 1);
+  }
+  let input = state(); addShield(input, input.players[1], 'radar'); addShield(input, input.players[1], 'radar');
+  let j = beginRound(input, { a: action('shock', 'b'), b: action('basicB') });
+  assert.equal(j.status, 'complete'); assert.equal(get(j, 'b').shields.length, 1);
+  input = state(); addShield(input, input.players[0], 'foam'); addShield(input, input.players[0], 'foam');
+  j = beginRound(input, { a: action('foam'), b: action('basicB') });
+  assert.equal(j.status, 'complete'); assert.equal(get(j, 'a').shields.length, 2);
+  input = state(); addShield(input, input.players[1], 'ghost').layers = 2;
+  addShield(input, input.players[1], 'ghost').layers = 2; addShield(input, input.players[1], 'ghost');
+  j = beginRound(input, { a: action('punch', 'b'), b: action('basicB') });
+  assert.equal(j.pending.kind, 'shield'); assert.equal(j.pending.options.length, 2, 'different layers remain real choices, duplicate partial shields collapse');
+});
+
+test('V2 earthquake respects lightning cost immunity without consuming any shield', () => {
+  const input = state(p('a'), p('b'), p('c'));
+  addShield(input, input.players[1], 'lightning'); addShield(input, input.players[1], 'foam');
+  const j = battle(input, { a: { move: 'quake', targets: ['b', 'c'] }, b: action('basicB'), c: action('basicB') });
+  assert.equal(damage(j, 'b'), 0); assert.equal(get(j, 'b').shields.length, 2); assert.equal(damage(j, 'c'), 1);
+  const other = state(); addShield(other, other.players[1], 'thunder');
+  const result = battle(other, { a: { move: 'quake', targets: ['b'] }, b: action('basicB') });
+  assert.equal(damage(result, 'b'), 1, 'other existing penetration rules remain intact');
+});
+
 test('V2 gun is blocked by action identity, not by spending or holding dodge resources', () => {
   for (const move of ['basicB', 'basicZ', 'basicF', 'basicY', 'ghostDodge', 'heal']) {
     const j = battle(state(), { a: action('gun', 'b'), b: action(move) });
@@ -216,7 +245,7 @@ test('V2 level-2 control checks and hammer exemption do not create cancellation 
 });
 
 test('V2 choice continuations do not repeat life loss or award move stock twice', () => {
-  const input = state(p('a', { hp: 1 }), p('b')); addShield(input, input.players[1], 'foam'); addShield(input, input.players[1], 'foam');
+  const input = state(p('a', { hp: 1 }), p('b')); addShield(input, input.players[1], 'foam'); addShield(input, input.players[1], 'ghost');
   let j = beginRound(input, { a: action('ghostSword', 'b'), b: action('basicB') });
   assert.equal(j.pending.kind, 'shield'); assert.equal(get(j, 'a').hp, 0);
   assert.equal(get(j, 'a').resources.ghostSword, 31);

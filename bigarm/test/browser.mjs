@@ -57,8 +57,31 @@ try {
   assert.ok((await a.locator('.rules-list').innerText()).includes('单体'));
   await a.locator('#close-modal').click();
   await login(a, '甲'); await login(b, '乙');
+  await a.locator('#create [name=name]').fill('朋友的竞技场');
+  await a.locator('#create [name=name]').evaluate(el => { el.focus(); el.setSelectionRange(2, 2); });
+  await b.locator('#create button').click(); await b.locator('[data-act=leave]').waitFor();
+  await a.waitForTimeout(1200);
+  assert.equal(await a.locator('#create [name=name]').inputValue(), '朋友的竞技场');
+  assert.equal(await a.locator('#create [name=name]').evaluate(el => el.selectionStart), 2);
+  await a.locator('#create [name=name]').evaluate(el => {
+    el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    el.value = '朋友的竞技场'; el.dataset.composingNode = 'original';
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true }));
+  });
+  await b.locator('[data-act=leave]').click(); await a.waitForTimeout(1200);
+  assert.equal(await a.locator('#create [name=name]').getAttribute('data-composing-node'), 'original', 'polling must not replace an IME input');
+  await a.locator('#create [name=name]').evaluate(el => el.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true })));
   await a.locator('#create [name=name]').fill('朋友的竞技场'); await a.locator('#create [name=capacity]').selectOption('2'); await a.locator('#create button').click();
   const roomId = (await waitInfo(a, s => !!s.room)).room.id;
+  assert.equal((await info(a)).room.name, '朋友的竞技场');
+  await b.locator('#join [name=roomId]').fill(roomId.slice(0, 3));
+  await b.locator('#join [name=roomId]').evaluate(el => { el.focus(); el.setSelectionRange(1, 1); });
+  await a.evaluate(async () => {
+    await fetch('/api/rooms/capacity', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionStorage.getItem('bigarm-token')}` }, body: JSON.stringify({ capacity: 3 }) });
+  });
+  await b.waitForTimeout(1200);
+  assert.equal(await b.locator('#join [name=roomId]').inputValue(), roomId.slice(0, 3));
+  assert.equal(await b.locator('#join [name=roomId]').evaluate(el => el.selectionStart), 1);
   await b.locator('#join [name=roomId]').fill(roomId); await b.locator('#join button').click();
   await a.locator('[data-act=ready]').click(); await b.locator('[data-act=ready]').click();
   await a.locator('[data-act=move][data-id=basicB]').waitFor();
@@ -89,7 +112,7 @@ try {
   assert.equal((await info(b)).room.players.find(p => p.name === '乙').hp, 4);
   await b.locator('.combat-fx.damage').waitFor();
   await b.screenshot({ path: 'test-results/damage-mobile.png', fullPage: true });
-  for (const bm of ['basicF', 'foam', 'basicF', 'foam']) await round(a, b, 'basicB', bm);
+  for (const bm of ['basicF', 'foam', 'basicF', 'foam', 'ghost', 'basicB', 'basicF', 'foam']) await round(a, b, 'basicB', bm);
   for (const query of ['hxb', 'huixuanbiao', '回镖']) {
     await a.locator('#move-search').fill(query);
     await a.locator('#move-results [data-id=boomerang]').waitFor();
@@ -109,7 +132,7 @@ try {
   await b.setViewportSize({ width: 390, height: 844 }); await fits(b);
   await b.screenshot({ path: 'test-results/choice-mobile.png', fullPage: true });
   await a.screenshot({ path: 'test-results/arena-desktop.png', fullPage: true });
-  await b.locator('.choice-option').first().click();
+  await b.getByRole('button', { name: '泡沫盾', exact: true }).click();
   await waitInfo(a, s => s.room.phase === 'selecting');
   assert.equal((await info(b)).room.players.find(p => p.name === '乙').shields.length, 1);
   await b.locator('.combat-fx.shield-loss').waitFor();

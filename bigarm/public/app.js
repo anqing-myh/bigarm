@@ -18,7 +18,7 @@ const spellDescriptions = {
 const specialDescriptions = {
   ber: '互攻时克制刀。', knife: '真伤绕过普通挡伤盾；普通低点或等点仍可命中，但不能绕过 ber 克制、免疫或防法。', torch: '目标当回合出基础方盾时改为 2 伤害。',
   fireWheel: '两段各 0.5，每段命中（含打盾）获得 1 圆盾。闪只防第一段，圆盾或超闪防两段。',
-  quake: '选择一人时点数 15、伤害 1；选择两名不同玩家时点数 7.5、各伤害 1。', knifePoint: '互攻时克制成本含大臂的攻击，被其余攻击克制；镜像抵消。',
+  quake: '选择一人时点数 15、伤害 1；选择两名不同玩家时点数 7.5、各伤害 1。闪电盾正常免疫地震且不消耗；其他原有盾交互保留。', knifePoint: '互攻时克制成本含大臂的攻击，被其余攻击克制；镜像抵消。',
   sixFists: '基础动作均不能防；自己本回合 1 级免伤、1 级免控。', boomerang: '按方向从邻座分配 3、4、5…点，全体单体投递初始入队按点数排序；每人伤害 1，可被虚无闪防。',
   phoenix: '攻击前获得 3 祝福值，不要求命中。', phoenixFlame: '主目标 2 伤害，左右存活邻居各溅射 1；去重且不伤自己，仅主目标穿泡级。',
   meteor: '每名以基础/等效防法防住的目标让自己另受一次 0.5 真伤。每次独立，不能合并用祝福减伤。',
@@ -200,14 +200,17 @@ function render() {
   const stable = JSON.stringify([data?.self, data?.rooms, data?.room, ui, token ? true : false, busy]);
   if (stable === key) return; key = stable;
   const focused = app.contains(document.activeElement) ? document.activeElement : null;
-  const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd } : focused?.name ? { name: focused.name } : null;
+  const controlKey = el => el.id ? `#${el.id}` : el.form?.id && el.name ? `#${el.form.id} [name="${el.name}"]` : null;
+  const drafts = [...app.querySelectorAll('input:not(#move-search),select,textarea')].map(el => [controlKey(el), el.value]);
+  const focus = focused ? { selector: controlKey(focused), start: focused.selectionStart, end: focused.selectionEnd } : null;
   const scroll = ['.command-panel', '.command-panel > .panel', '.blessing-events', '#move-results']
     .map(selector => [selector, $(selector)?.scrollTop || 0]);
   document.body.classList.toggle('in-game', !!(token && data?.room));
   app.innerHTML = !token || !data ? home() : data.room ? roomPage(data.room) : lobby();
+  for (const [selector, value] of drafts) if (selector && $(selector)) $(selector).value = value;
   $('#user-button').classList.toggle('hidden', !data?.self); $('#user-button').textContent = data?.self?.name || '';
   for (const [selector, top] of scroll) if ($(selector)) $(selector).scrollTop = top;
-  const restore = focus?.id ? document.getElementById(focus.id) : focus?.name ? document.getElementsByName(focus.name)[0] : null;
+  const restore = focus?.selector ? $(focus.selector) : null;
   if (restore) { restore.focus({ preventScroll: true }); if (focus.start != null) restore.setSelectionRange(focus.start, focus.end); }
   for (const el of document.querySelectorAll('[data-feedback]')) {
     const f = feedback.find(f => f.id === Number(el.dataset.feedback));
@@ -293,12 +296,17 @@ document.addEventListener('click', event => {
 });
 document.addEventListener('input', event => {
   if (event.target.id === 'move-search') { ui.search = event.target.value; if (!event.isComposing) render(); }
-  if (event.target.id === 'rule-search') { const cursor = event.target.selectionStart; showRules(event.target.value); $('#rule-search').focus(); $('#rule-search').setSelectionRange(cursor, cursor); }
+  if (event.target.id === 'rule-search' && !event.isComposing) { const cursor = event.target.selectionStart; showRules(event.target.value); $('#rule-search').focus(); $('#rule-search').setSelectionRange(cursor, cursor); }
   if (event.target.closest('#create')) { ui.roomName = $('#create [name=name]').value; ui.capacity = Number($('#create [name=capacity]').value); }
   if (event.target.closest('#blessing')) { ui.blessing[event.target.name] = event.target.value; updateBlessingControls(); }
 });
-document.addEventListener('compositionstart', event => { if (event.target.id === 'move-search') composing = true; });
-document.addEventListener('compositionend', event => { if (event.target.id === 'move-search') { composing = false; ui.search = event.target.value; render(); } });
+document.addEventListener('compositionstart', event => { if (app.contains(event.target) || event.target.id === 'rule-search') composing = true; });
+document.addEventListener('compositionend', event => {
+  composing = false;
+  if (event.target.id === 'move-search') ui.search = event.target.value;
+  if (event.target.id === 'rule-search') { const value = event.target.value; showRules(value); $('#rule-search').focus(); }
+  render();
+});
 document.addEventListener('keydown', event => {
   if (event.target.id !== 'move-search' || event.isComposing) return;
   if (event.key === 'Escape') { ui.search = ''; render(); }

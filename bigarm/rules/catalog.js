@@ -25,7 +25,7 @@ attack('arrows', '万箭齐发', '2S', 'FSC', [1, 0.5], { target: 'all', air: tr
 attack('smallWave', '小海波', 'F', 'FSC', [0.5], { target: 'all' });
 attack('dart', '镖', 'F', 'SC', [0.5], { air: true });
 attack('smallWheel', '小火轮', 'Y', 'YSC', [0.5], { air: true });
-attack('quake', '地震', '3S', 'SC', [1], { target: 'dual', pierce: ['foam', 'electric', 'radar'] });
+attack('quake', '地震', '3S', 'SC', [1], { target: 'dual', pierce: ['foam', 'electric', 'radar'], pierceExceptions: ['lightning'] });
 attack('tripleKick', '三连踹', 'BBF', 'FSC', [2]);
 attack('sunPunch', '太阳拳', 'BBY', 'YSC', [1], { attribute: 'magic', air: true, pierce: ['foam'] });
 attack('comboPunch', '连环拳', '5B', 'C', [3]);
@@ -113,4 +113,4 @@ for (const move of Object.values(moves)) {
 for (const def of Object.values(equipment)) Object.freeze(def);
 export const MOVES = Object.freeze(moves);
 export const EQUIPMENT = Object.freeze(equipment);
-export const RULE_VERSION = '2026-11-25';
+export const RULE_VERSION = '2026-11-26';

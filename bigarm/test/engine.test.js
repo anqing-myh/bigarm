@@ -175,7 +175,7 @@ test('torch, concentrated quake, splash de-duplication and balance resource dama
 test('piercing beats matching element, ignore preserves shields, all directions precompute points', () => {
   const s = state(p('a'), p('b')); addShield(s, s.players[1], 'lightning'); addShield(s, s.players[1], 'foam');
   let j = pair(a('quake', null, { targets: ['b'] }), a('basicB'), s.players);
-  assert.equal(get(j, 'b').shields.length, 0); assert.equal(damage(j, 'b'), 1);
+  assert.equal(get(j, 'b').shields.length, 2); assert.equal(damage(j, 'b'), 0);
   const t = state(p('a'), p('b')); addShield(t, t.players[1], 'flame');
   j = pair(a('staff'), a('basicB'), t.players); assert.equal(damage(j, 'b'), 2); assert.equal(get(j, 'b').shields.length, 1);
   j = battle(state(p('a'), p('b'), p('c'), p('d')), { a: a('boomerang', null, { direction: 'counterclockwise' }), b: a('basicB'), c: a('basicB'), d: a('basicB') });
