@@ -17,6 +17,93 @@ function finish(job) {
 }
 const battle = (input, actions) => finish(beginRound(input, actions));
 
+test('V2 triple kick redirects external attack segments once, preserving multiplicity and group scope', () => {
+  let j = battle(state(p('a'), p('b'), p('c')), { a: action('tripleKick', 'b'), b: action('basicB'), c: action('fireWheel', 'a') });
+  assert.equal(damage(j, 'a'), 0); assert.equal(damage(j, 'c'), 1);
+  assert.equal(j.hits.filter(h => h.source === 'c' && h.target === 'c').length, 2);
+  assert.ok(j.hits.filter(h => h.target === h.source).every(h => !h.suppressed));
+  assert.equal(get(j, 'c').resources.Y, 30, 'source still earns both on-hit rewards');
+  j = battle(state(p('a'), p('b'), p('c'), p('d')), { a: action('tripleKick', 'd'), b: action('tripleKick', 'd'), c: action('wave'), d: action('basicB') });
+  assert.equal(damage(j, 'c'), 2, 'two reflectors produce two self hits, without deduplication');
+  assert.ok(j.hits.filter(h => h.source === 'c' && h.target === 'c').every(h => h.scope === 'group'));
+  j = battle(state(), { a: action('tripleKick', 'b'), b: action('kick', 'a') });
+  assert.equal(damage(j, 'a'), 1, 'chosen opponent is exempt from reflection');
+});
+
+test('V2 rewritten targets determine clashes and self hits can be blocked by source shields', () => {
+  const input = state(p('a'), p('b'), p('c'));
+  input.ongoing.push({ id: 'o0', source: 'a', action: { move: 'skyCannon', targets: ['c'] }, start: 1, end: 3 });
+  addShield(input, input.players[2], 'foam');
+  const j = battle(input, { a: action('tripleKick', 'b'), b: action('basicB'), c: action('wave') });
+  const self = j.hits.find(h => h.source === 'c' && h.target === 'c');
+  assert.equal(self.suppressed, false, 'old reverse a->c intention does not suppress a rewritten c->c hit');
+  assert.ok(!j.hits.find(h => h.move === 'skyCannon').suppressed);
+  assert.equal(get(j, 'c').shields.length, 0);
+});
+
+test('V2 sun punch reflects R2 control before seat-ordered casting and resumes source-owned choices once', () => {
+  const input = state(p('a'), p('b'), p('c'));
+  addShield(input, input.players[0], 'radar'); addShield(input, input.players[0], 'lightning');
+  addShield(input, input.players[2], 'radar');
+  let j = beginRound(input, { a: action('shock', 'c'), b: action('basicB'), c: action('sunPunch', 'b') });
+  assert.equal(j.pending.kind, 'shock'); assert.equal(j.pending.playerId, 'a');
+  j = resumeRound(JSON.parse(JSON.stringify(j)), 'a', j.pending.id, j.pending.options[0].id);
+  j = finish(j);
+  assert.equal(j.logs.filter(e => e.type === 'reflectControl').length, 1);
+  assert.equal(get(j, 'c').shields.length, 1);
+  assert.equal(get(j, 'a').shields.length, 1);
+  j = battle(state(p('a'), p('b'), p('c')), { a: action('crucio', 'c'), b: action('basicB'), c: action('sunPunch', 'b') });
+  assert.ok(j.logs.some(e => e.type === 'reflectControl'));
+  assert.equal(get(j, 'c').effects.length, 0); assert.equal(get(j, 'a').effects.length, 0, 'source intrinsic immunity can stop returned control');
+});
+
+test('V2 sun punch does not reflect chosen-opponent control or R4 hit control', () => {
+  const input = state(p('a', { airborne: true }), p('b'), p('c'));
+  addShield(input, input.players[0], 'radar');
+  let j = battle(input, { a: action('sunPunch', 'c'), b: action('basicB'), c: action('shock', 'a') });
+  assert.equal(get(j, 'a').shields.length, 0, 'chosen opponent bypasses reflection');
+  j = battle(state(p('a', { airborne: true }), p('b'), p('c')), { a: action('sunPunch', 'b'), b: action('basicB'), c: action('upheaval') });
+  assert.equal(get(j, 'a').airborne, false);
+  assert.ok(j.logs.some(e => e.type === 'ground'));
+});
+
+test('V2 redirected control cache supports special player IDs across JSON continuation', () => {
+  const caster = { ...p('a'), id: '__proto__' }, input = state(caster, p('b'), p('c'));
+  addShield(input, input.players[0], 'radar'); addShield(input, input.players[0], 'lightning');
+  const actions = Object.fromEntries([['__proto__', action('shock', 'c')], ['b', action('basicB')], ['c', action('sunPunch', 'b')]]);
+  let j = beginRound(input, actions);
+  assert.equal(j.pending.playerId, '__proto__');
+  j = resumeRound(JSON.parse(JSON.stringify(j)), '__proto__', j.pending.id, j.pending.options[0].id);
+  assert.equal(j.logs.filter(e => e.type === 'reflectControl').length, 1);
+});
+
+test('V2 hammer disables reflection and its stock gain, but not cloud-arrow intrinsic protection', () => {
+  for (const move of ['tripleKick', 'sunPunch']) {
+    const input = state(p('a'), p('b'), p('c'), p('d')); addShield(input, input.players[1], 'radar');
+    const j = battle(input, { a: action('hammer3', 'b'), b: action(move, 'd'), c: action(move === 'tripleKick' ? 'punch' : 'shock', 'b'), d: action('basicB') });
+    assert.equal(get(j, 'b').resources[move], 30);
+    assert.ok(!j.logs.some(e => e.type === 'reflectDamage' || e.type === 'reflectControl'));
+  }
+  const j = battle(state(p('a'), p('b'), p('c')), { a: action('hammer3', 'b'), b: action('cloudArrow', 'c'), c: action('basicB') });
+  assert.equal(damage(j, 'b'), 0); assert.equal(get(j, 'b').resources.cloudArrow, 31);
+  assert.equal(MOVES.cloudArrow.externalImmunity, 2);
+  const direct = battle(state(), { a: action('cloudArrow', 'b'), b: action('sixFists', 'a') });
+  assert.equal(damage(direct, 'a'), 7, 'chosen opponent bypasses conditional protection');
+});
+
+test('V2 crucio grants cast-round level-one invulnerability, preserving it when its curse is silenced', () => {
+  let input = state(); addShield(input, input.players[0], 'radar');
+  let j = battle(input, { a: action('crucio', 'b'), b: action('shock', 'a') });
+  assert.equal(get(j, 'a').shields.length, 1, 'cast-round control immunity blocks shock');
+  j = battle(state(), { a: action('crucio', 'b'), b: action('punch', 'a') });
+  assert.equal(damage(j, 'a'), 0);
+  j = battle(j.state, { a: action('basicB'), b: action('punch', 'a') });
+  assert.equal(damage(j, 'a'), 1, 'intrinsic invulnerability lasts only the cast round');
+  j = battle(state(), { a: action('crucio', 'b'), b: action('hammer3', 'a') });
+  assert.ok(j.cancelledSpells.includes('a'), 'level-one immunity does not stop level-two silence');
+  assert.equal(get(j, 'b').effects.length, 0); assert.equal(damage(j, 'a'), 0, 'intrinsic protection survives cancellation');
+});
+
 test('V2 identical shields automatically resolve hits, shock and necessary discard', () => {
   for (const type of ['foam', 'ghost']) {
     const input = state(); addShield(input, input.players[1], type); addShield(input, input.players[1], type);

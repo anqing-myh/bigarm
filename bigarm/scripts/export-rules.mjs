@@ -5,6 +5,7 @@ import { MOVES, EQUIPMENT, BASE_RESOURCE_NAMES, RESOURCE_NAMES, WEIGHTS, RULE_VE
 
 function spellComponents(m) {
   const common = { stage: 'R2', cancelled_by_hammer: true };
+  if (m.spell === 'reflectDamage' || m.spell === 'reflectControl') return [{ kind: m.spell, stage: m.spell === 'reflectDamage' ? 'R3' : 'R2', cancelled_by_hammer: true, target_rule: 'if_source_is_not_selected_opponent_redirect_target_to_original_source', preserve_source_and_properties: true, preserve_duplicate_targets: true, recursive_reflection: false, clash_after_retarget: m.spell === 'reflectDamage' }];
   if (m.spell === 'silence') return [{ kind: 'cancel_new_spell_components', stage: 'R1c', level: 2, target: 'selected_opponent', cancelled_by_hammer: false, preserves: ['intrinsic_effects', 'old_statuses', 'attack_damage', 'on_hit_callbacks'], removes_move_stock_gain: true }];
   if (m.spell === 'shock') return [{ ...common, kind: 'remove_equipment', level: 1, target: 'selected_opponent', choose: 'recipient_selects_one_electric_removable_instance', immediate: true }];
   if (m.spell === 'blessing') return [{ ...common, kind: 'gain_resource', target: 'self', resource: 'Q', amount: 3, requires_hit: false }];
@@ -33,7 +34,7 @@ export function catalogDocument() {
       stock_gain: { resource: m.resource || m.id, amount: 1, producer_total: m.type === 'basic' && 'BZFY'.includes(m.resource) ? 3 : null, stage: m.type === 'basic' ? 'R1b' : 'R1d', cancelled_when_new_spell_component_is_silenced: !!m.spell && m.spell !== 'silence', independent_of_real_shields_and_statuses: true },
       resource_value_points: WEIGHTS[m.resource || m.id] / 10,
       target: m.target || 'self',
-      intrinsic: { damage_immunity_level: m.immunity || 0, control_immunity_level: m.controlImmunity || 0, basic_defense: m.resource || null, start_of_round_life_loss: m.lifeCost || 0, life_loss_is_damage: false, intrinsic_cancelled_by_hammer: false },
+      intrinsic: { damage_immunity_level: m.immunity || 0, conditional_damage_immunity: m.externalImmunity ? { level: m.externalImmunity, stage: 'R4', source_not_equal_selected_opponent: true, cancelled_by_hammer: false } : null, control_immunity_level: m.controlImmunity || 0, basic_defense: m.resource || null, start_of_round_life_loss: m.lifeCost || 0, life_loss_is_damage: false, intrinsic_cancelled_by_hammer: false },
       attack: m.type !== 'attack' ? null : {
         attribute: m.attribute,
         damage_level: 1,

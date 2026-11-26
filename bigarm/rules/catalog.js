@@ -26,8 +26,8 @@ attack('smallWave', '小海波', 'F', 'FSC', [0.5], { target: 'all' });
 attack('dart', '镖', 'F', 'SC', [0.5], { air: true });
 attack('smallWheel', '小火轮', 'Y', 'YSC', [0.5], { air: true });
 attack('quake', '地震', '3S', 'SC', [1], { target: 'dual', pierce: ['foam', 'electric', 'radar'], pierceExceptions: ['lightning'] });
-attack('tripleKick', '三连踹', 'BBF', 'FSC', [2]);
-attack('sunPunch', '太阳拳', 'BBY', 'YSC', [1], { attribute: 'magic', air: true, pierce: ['foam'] });
+attack('tripleKick', '三连踹', 'BBF', 'FSC', [2], { spell: 'reflectDamage' });
+attack('sunPunch', '太阳拳', 'BBY', 'YSC', [1], { attribute: 'magic', air: true, pierce: ['foam'], spell: 'reflectControl' });
 attack('comboPunch', '连环拳', '5B', 'C', [3]);
 attack('dragonSword', '青龙剑', 'FFYY', 'YSC', [2]);
 attack('knifePoint', '刀点刀', 'BFFFY', '', [2], { clash: 'ingredientB' });
@@ -49,7 +49,7 @@ attack('balance', '均衡之刃', 'BZFYSC', '', [0], { damageRule: 'balance' });
 // V2 attacks share the same hit pipeline; special rules are declared as data.
 attack('gun', '枪', 'Z', '', [0.5], { air: true, guardRule: 'exceptDodgeAction' });
 attack('flyingKnife', '飞刀', 'S', 'SC', [1], { air: true, delay: 1 });
-attack('cloudArrow', '穿云箭', 'BBC', 'FS', [1], { air: true, pierce: ['foam'], ghostPierce: 'whole' });
+attack('cloudArrow', '穿云箭', 'BBC', 'FS', [1], { air: true, pierce: ['foam'], ghostPierce: 'whole', externalImmunity: 2 });
 attack('punchKick', '拳打脚踢', 'BBBFY', 'BFC', [2], { pierce: ['foam'], ghostPierce: 'whole' });
 attack('arcLight', '弧光', 'BYC', 'BYC', [1], { target: 'all', reverseClash: true });
 attack('hammer3', '锤锤锤', 'BFY', 'BZS', [1], { spell: 'silence', controlLevel: 2 });
@@ -80,7 +80,7 @@ add('thunderDodge', '雷闪', 'spell', 'CCC', { immunity: 2, controlImmunity: 2 
 add('heal', '回一滴血', 'spell', 'CCC', { spell: 'heal' });
 add('guardSix', '防六拳合一', 'spell', '', { spell: 'guardSix' });
 add('axi', '阿西吧', 'spell', 'C', { immunity: 2, controlImmunity: 2, lifeCost: 1 });
-add('crucio', '钻心咒', 'spell', '5C', { target: 'single', spell: 'curse', duration: 15, controlLevel: 1 });
+add('crucio', '钻心咒', 'spell', '5C', { target: 'single', spell: 'curse', duration: 15, controlLevel: 1, immunity: 1, controlImmunity: 1 });
 
 const weights = { ...baseWeights };
 function resourceWeight(key, visiting = new Set()) {

@@ -108,6 +108,8 @@ function shieldInteraction(hit, s) {
   return 'normal';
 }
 function isImmune(job, p, hit) {
+  const ownAction = job.actions[p.id], externalLevel = MOVES[ownAction?.move]?.externalImmunity || 0;
+  if (externalLevel > 0 && externalLevel >= (hit.level || 1) && hit.source !== ownAction.targets[0]) return true;
   if ((job.protection[p.id]?.damage || 0) >= (hit.level || 1)) return true;
   if (hit.scope !== 'group' && activeEffects(job, p).some(e => e.kind === 'scope')) return true;
   return p.shields.some(s => {
@@ -140,6 +142,10 @@ function makeHits(job) {
     for (let segment = 0; segment < m.damage.length; segment++) for (let index = 0; index < targets.length; index++) {
       const target = targets[index], primary = target === action.targets?.[0];
       const hit = { id: uid(state, 'h'), source, target, move: m.id, segment, power: m.target === 'path' ? power + 10 * index : power, amount: m.target === 'splash' && !primary ? 1 : m.damage[segment], scope: m.target === 'all' ? 'group' : m.target === 'dual' && targets.length === 2 ? 'dual' : m.target === 'splash' && !primary ? 'splash' : 'single', air: m.air, trueDamage: !!m.trueDamage, ignore: m.ignore || [], pierce: m.target === 'splash' && !primary ? [] : m.pierce || [] };
+      if (reflects(job, target, 'reflectDamage') && actionTarget(job, target) !== source) {
+        hit.originalTarget = target; hit.reflectedBy = target; hit.target = source;
+        log(job, 'reflectDamage', `${player(state, target).name} 将${m.name}反射给来源。`, { source, target: source, reflectedBy: target, hitId: hit.id });
+      }
       hits.push(hit);
     }
     if (m.target === 'path') hits.forEach((h, n) => batches.push({ power: h.power, seat: player(state, source).seat, serial, part: n, hits: [h] }));
@@ -164,7 +170,18 @@ function makeHits(job) {
     return cm.reverseClash || hm.reverseClash ? counter.power <= hit.power : counter.power >= hit.power;
   };
   // Compare immutable intentions, including already executed or subsequently blocked hits.
-  for (const h of job.hits) h.suppressed = job.hits.some(c => c.source === h.target && c.target === h.source && outranks(c, h));
+  for (const h of job.hits) h.suppressed = h.source !== h.target && job.hits.some(c => c.source === h.target && c.target === h.source && outranks(c, h));
+}
+function actionTarget(job, id) { return job.actions[id]?.targets?.[0]; }
+function reflects(job, id, kind) { return MOVES[job.actions[id]?.move]?.spell === kind && !job.cancelledSpells.includes(id); }
+function controlTargets(job, source, targets) {
+  job.controlTargets = Object.assign(Object.create(null), job.controlTargets || {});
+  if (!Object.hasOwn(job.controlTargets, source)) job.controlTargets[source] = targets.map(target => {
+    if (!reflects(job, target, 'reflectControl') || actionTarget(job, target) === source) return target;
+    log(job, 'reflectControl', `${player(job.state, target).name} 将有害法术反射给来源。`, { source, target: source, reflectedBy: target });
+    return source;
+  });
+  return job.controlTargets[source];
 }
 function hitCallback(job, hit) {
   const m = MOVES[hit.move], target = player(job.state, hit.target), caster = player(job.state, hit.source);
@@ -245,14 +262,28 @@ function advance(job) {
         log(job, 'spellCancelled', `${p.name} 的${m.name}法术组件未生效。`, { source: id, move: m.id });
         job.cursor++; continue;
       }
-      if (m.spell === 'shock' && !controlImmune(job, player(job.state, a.targets[0]))) {
-        const target = player(job.state, a.targets[0]), options = target.shields.filter(s => EQUIPMENT[s.type].electric).map(s => ({ id: s.id, label: EQUIPMENT[s.type].name }));
-        if (options.length) {
-          const selected = job.spellShield || chooseShield(job, target, 'shock', options, { source: id });
-          if (!selected) return job;
-          delete job.spellShield; target.shields = target.shields.filter(s => s.id !== selected);
-          log(job, 'shock', `${target.name} 的一件装备被小电移除。`, { target: target.id, shieldId: selected });
+      if (m.spell === 'shock' || m.spell === 'curse') {
+        const targets = controlTargets(job, id, a.targets);
+        job.controlCursor ||= 0;
+        while (job.controlCursor < targets.length) {
+          const target = player(job.state, targets[job.controlCursor]);
+          if (controlImmune(job, target, m.controlLevel || 1)) {
+            log(job, 'controlImmune', `${target.name} 免疫了${m.name}。`, { source: id, target: target.id });
+          } else if (m.spell === 'shock') {
+            const options = target.shields.filter(s => EQUIPMENT[s.type].electric).map(s => ({ id: s.id, label: EQUIPMENT[s.type].name }));
+            if (options.length) {
+              const selected = job.spellShield || chooseShield(job, target, 'shock', options, { source: id });
+              if (!selected) return job;
+              delete job.spellShield; target.shields = target.shields.filter(s => s.id !== selected);
+              log(job, 'shock', `${target.name} 的一件装备被小电移除。`, { target: target.id, shieldId: selected });
+            }
+          } else {
+            addEffect(job, target, m.id, 'curse', 'dodgeLifeLoss', t + 1, t + m.duration, id);
+            log(job, 'status', `${target.name} 将从下一回合进入${m.name}状态。`, { source: id, target: target.id, move: m.id });
+          }
+          job.controlCursor++;
         }
+        job.controlCursor = 0;
       }
       if (m.spell === 'blessing') { p.resources.Q += 3; log(job, 'gain', `${p.name} 获得 3 祝福值。`); }
       if (m.spell === 'heal') { const amount = Math.min(1, p.maxHp - p.hp); p.hp += amount; log(job, 'heal', `${p.name} 恢复 ${amount} 生命。`); }
@@ -261,11 +292,6 @@ function advance(job) {
       if (m.spell === 'void') {
         addEffect(job, p, m.id, 'defense', 'C', statusStart, statusStart);
         addEffect(job, p, m.id, 'scope', null, statusStart, statusStart + 2);
-      }
-      if (m.spell === 'curse') {
-        const target = player(job.state, a.targets[0]);
-        if (controlImmune(job, target, m.controlLevel)) log(job, 'controlImmune', `${target.name} 免疫了${m.name}。`, { source: id, target: target.id });
-        else { addEffect(job, target, m.id, 'curse', 'dodgeLifeLoss', t + 1, t + m.duration, id); log(job, 'status', `${target.name} 将从下一回合进入${m.name}状态。`, { source: id, target: target.id, move: m.id }); }
       }
       if (m.spell === 'guardSix') job.protection[id].six = true;
       job.cursor++; continue;

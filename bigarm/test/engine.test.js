@@ -95,12 +95,12 @@ test('T39–T40: three ghost layers block pierced hit, two layers pass through t
     const j = pair(a('tsunami'), a('basicB'), s.players); assert.equal(damage(j, 'b'), layers === 3 ? 0 : 1);
   }
 });
-test('T42–T46: equivalent defenses count, no reflections, void scope persists separately', () => {
+test('T42–T46: equivalent defenses, stage reflections and void scope', () => {
   const b = p('b'); b.effects.push({ id: 'old', kind: 'defense', value: 'C', start: 1, end: 2 });
   let j = pair(a('meteor'), a('basicB'), [p('a'), b]); assert.equal(damage(j, 'a'), 0.5);
-  j = battle(state(p('a'), p('b'), p('c')), { a: a('tripleKick', 'b'), b: a('basicB'), c: a('punch', 'a') }); assert.equal(damage(j, 'a'), 1); assert.equal(damage(j, 'b'), 2); assert.equal(damage(j, 'c'), 0);
+  j = battle(state(p('a'), p('b'), p('c')), { a: a('tripleKick', 'b'), b: a('basicB'), c: a('punch', 'a') }); assert.equal(damage(j, 'a'), 0); assert.equal(damage(j, 'b'), 2); assert.equal(damage(j, 'c'), 1);
   const s = state(p('a'), p('b'), p('c')); addShield(s, s.players[0], 'radar');
-  j = battle(s, { a: a('sunPunch', 'b'), b: a('basicB'), c: a('shock', 'a') }); assert.equal(get(j, 'a').shields.length, 0); assert.equal(damage(j, 'b'), 1);
+  j = battle(s, { a: a('sunPunch', 'b'), b: a('basicB'), c: a('shock', 'a') }); assert.equal(get(j, 'a').shields.length, 1); assert.equal(damage(j, 'b'), 1);
   const voidPlayer = p('b'); voidPlayer.effects.push({ id: 'oldVoid', kind: 'scope', start: 0, end: 2 });
   j = pair(a('boomerang', null, { direction: 'clockwise' }), a('basicB'), [p('a'), voidPlayer]); assert.equal(damage(j, 'b'), 0);
   j = pair(a('wave'), a('basicB'), [p('a'), voidPlayer]); assert.equal(damage(j, 'b'), 1);

@@ -387,6 +387,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: "B"
       start_of_round_life_loss: 0
@@ -417,6 +418,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: "Z"
       start_of_round_life_loss: 0
@@ -447,6 +449,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: "F"
       start_of_round_life_loss: 0
@@ -477,6 +480,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: "Y"
       start_of_round_life_loss: 0
@@ -507,6 +511,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: "S"
       start_of_round_life_loss: 0
@@ -537,6 +542,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: "C"
       start_of_round_life_loss: 0
@@ -568,6 +574,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -635,6 +642,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -703,6 +711,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -771,6 +780,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -838,6 +848,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -904,6 +915,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -972,6 +984,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1039,6 +1052,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1114,6 +1128,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1182,6 +1197,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1249,6 +1265,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1315,6 +1332,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1382,6 +1400,7 @@ moves:
     target: "dual"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1447,12 +1466,13 @@ moves:
       amount: 1
       producer_total: null
       stage: "R1d"
-      cancelled_when_new_spell_component_is_silenced: false
+      cancelled_when_new_spell_component_is_silenced: true
       independent_of_real_shields_and_statuses: true
     resource_value_points: 3.5
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1495,7 +1515,16 @@ moves:
         original_target_locked: true
         survives_source_death: true
         removed_when_target_dies: true
-    independent_spell_components: []
+    independent_spell_components:
+      -
+        kind: "reflectDamage"
+        stage: "R3"
+        cancelled_by_hammer: true
+        target_rule: "if_source_is_not_selected_opponent_redirect_target_to_original_source"
+        preserve_source_and_properties: true
+        preserve_duplicate_targets: true
+        recursive_reflection: false
+        clash_after_retarget: true
     on_hit: null
     on_block: null
     equipment: null
@@ -1515,12 +1544,13 @@ moves:
       amount: 1
       producer_total: null
       stage: "R1d"
-      cancelled_when_new_spell_component_is_silenced: false
+      cancelled_when_new_spell_component_is_silenced: true
       independent_of_real_shields_and_statuses: true
     resource_value_points: 4
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1564,7 +1594,16 @@ moves:
         original_target_locked: true
         survives_source_death: true
         removed_when_target_dies: true
-    independent_spell_components: []
+    independent_spell_components:
+      -
+        kind: "reflectControl"
+        stage: "R2"
+        cancelled_by_hammer: true
+        target_rule: "if_source_is_not_selected_opponent_redirect_target_to_original_source"
+        preserve_source_and_properties: true
+        preserve_duplicate_targets: true
+        recursive_reflection: false
+        clash_after_retarget: false
     on_hit: null
     on_block: null
     equipment: null
@@ -1589,6 +1628,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1655,6 +1695,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1724,6 +1765,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1788,6 +1830,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1858,6 +1901,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 1
+      conditional_damage_immunity: null
       control_immunity_level: 1
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1924,6 +1968,7 @@ moves:
     target: "path"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -1993,6 +2038,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2061,6 +2107,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2128,6 +2175,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2199,6 +2247,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2273,6 +2322,7 @@ moves:
     target: "splash"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2342,6 +2392,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2409,6 +2460,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2481,6 +2533,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2550,6 +2603,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2623,6 +2677,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2700,6 +2755,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2770,6 +2826,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2834,6 +2891,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2901,6 +2959,11 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity:
+        level: 2
+        stage: "R4"
+        source_not_equal_selected_opponent: true
+        cancelled_by_hammer: false
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -2970,6 +3033,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3040,6 +3104,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3109,6 +3174,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3188,6 +3254,7 @@ moves:
     target: "all"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3254,6 +3321,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 1
@@ -3320,6 +3388,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3385,6 +3454,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3422,6 +3492,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3463,6 +3534,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3502,6 +3574,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3541,6 +3614,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3580,6 +3654,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3619,6 +3694,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3657,6 +3733,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3695,6 +3772,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3733,6 +3811,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3772,6 +3851,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3810,6 +3890,7 @@ moves:
     target: "single"
     intrinsic:
       damage_immunity_level: 2
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3849,6 +3930,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 2
+      conditional_damage_immunity: null
       control_immunity_level: 2
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3883,6 +3965,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3926,6 +4009,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -3971,6 +4055,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -4027,6 +4112,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 2
+      conditional_damage_immunity: null
       control_immunity_level: 2
       basic_defense: null
       start_of_round_life_loss: 0
@@ -4058,6 +4144,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -4095,6 +4182,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 0
+      conditional_damage_immunity: null
       control_immunity_level: 0
       basic_defense: null
       start_of_round_life_loss: 0
@@ -4134,6 +4222,7 @@ moves:
     target: "self"
     intrinsic:
       damage_immunity_level: 2
+      conditional_damage_immunity: null
       control_immunity_level: 2
       basic_defense: null
       start_of_round_life_loss: 1
@@ -4164,8 +4253,9 @@ moves:
     resource_value_points: 17.5
     target: "single"
     intrinsic:
-      damage_immunity_level: 0
-      control_immunity_level: 0
+      damage_immunity_level: 1
+      conditional_damage_immunity: null
+      control_immunity_level: 1
       basic_defense: null
       start_of_round_life_loss: 0
       life_loss_is_damage: false
