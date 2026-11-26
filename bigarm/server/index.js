@@ -238,6 +238,13 @@ export function createServer(options = {}) {
         res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : data);
       }
+      if (url.pathname.startsWith('/fx/')) {
+        const name = path.basename(url.pathname);
+        if (!/^basic-[bzfysc]\.png$/.test(name)) return json(res, 404, { error: '页面不存在。' });
+        const data = await readFile(path.join(publicDir, 'fx', name));
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+        return res.end(req.method === 'HEAD' ? undefined : data);
+      }
       const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/interaction.js': ['interaction.js', 'text/javascript'], '/styles.css': ['styles.css', 'text/css'], '/game.css': ['game.css', 'text/css'] };
       const entry = files[url.pathname]; if (!entry) return json(res, 404, { error: '页面不存在。' });
       const data = await readFile(path.join(publicDir, entry[0])); res.writeHead(200, { 'Content-Type': `${entry[1]}; charset=utf-8`, 'Cache-Control': 'no-cache' }); res.end(req.method === 'HEAD' ? undefined : data);

@@ -7,6 +7,9 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;
 let token = sessionStorage.getItem('bigarm-token'), data = null, key = '', busy = false, offset = 0;
 const ui = { move: 'basicB', targets: [], search: '', direction: 'clockwise', blessing: {}, roomName: '', capacity: 10 };
 let composing = false, feedback = [], feedbackId = 0, feedbackTimer;
+let punchFx = [], punchFxId = 0, punchStamp = '';
+let basicFx = [], basicFxId = 0;
+const BASIC_FX_MOVES = new Set(['basicB', 'basicZ', 'basicF', 'basicY', 'basicS', 'basicC']);
 const spellDescriptions = {
   shock: '指定另一名玩家，移除一件可被小电移除的装备，由受术者选择。自己本回合 2 级免伤。',
   phoenixGuard: '本回合获得 2 级免伤与 2 级免控。', ghostDodge: '使用当回合及下回合拥有超闪防法，共 2 回合；不获得基础超闪，但获得一个幽灵闪招式资源。',
@@ -54,8 +57,18 @@ function describe(m) {
   return [m.description, specialDescriptions[m.id], m.type === 'attack' && m.duration && '包含施放当回合，之后仍可正常出招；目标死亡则此持续效果消失。'].filter(Boolean).join(' ');
 }
 function cost(m) { return [...Object.entries(m.cost).map(([k, n]) => `${n} ${RESOURCE_NAMES[k]}`), ...Object.entries(m.materials || {}).map(([k, n]) => `${n} 面真实${EQUIPMENT[k].name}`)].join(' · ') || '免费'; }
-function avatar(seat = 0) {
-  return `<div class="avatar palette-${seat % 10}"><svg viewBox="0 0 120 100" aria-hidden="true"><path d="M18 83C-3 63 8 20 29 19L41 4 51 18Q68 10 87 23L107 17 104 40Q124 87 88 92L32 92Z" fill="currentColor"/><path d="M37 52Q42 45 47 52M73 52Q78 45 83 52" fill="none" stroke="#22301d" stroke-width="5" stroke-linecap="round"/><path d="M52 65Q60 74 70 64" fill="none" stroke="#22301d" stroke-width="4" stroke-linecap="round"/><circle cx="30" cy="65" r="6" fill="#e78d8544"/><circle cx="90" cy="65" r="6" fill="#e78d8544"/></svg></div>`;
+function avatar(seat = 0, overlay = '') {
+  return `<div class="avatar palette-${seat % 10}">${overlay}<svg viewBox="0 0 120 100" aria-hidden="true"><path d="M18 83C-3 63 8 20 29 19L41 4 51 18Q68 10 87 23L107 17 104 40Q124 87 88 92L32 92Z" fill="currentColor"/><path d="M37 52Q42 45 47 52M73 52Q78 45 83 52" fill="none" stroke="#22301d" stroke-width="5" stroke-linecap="round"/><path d="M52 65Q60 74 70 64" fill="none" stroke="#22301d" stroke-width="4" stroke-linecap="round"/><circle cx="30" cy="65" r="6" fill="#e78d8544"/><circle cx="90" cy="65" r="6" fill="#e78d8544"/></svg></div>`;
+}
+// 拳的招式插画：出招是一记带墨迹的拳头，命中再爆出四散墨刺。
+function punchArt(kind) {
+  const fist = `<g class="ink"><path pathLength="100" class="a" d="M 46 80 C 41 74 39 64 40 54 C 41 46 41 40 46 36"/><path pathLength="100" class="a" d="M 46 36 C 47 27 55 25 56 33 C 57 25 65 24 66 32 C 67 24 75 25 76 34 C 79 30 83 35 81 40"/><path pathLength="100" class="a" d="M 81 40 C 86 42 87 48 83 52 C 80 55 77 56 77 61 C 77 67 76 72 72 76"/><path pathLength="100" class="a" d="M 72 76 C 67 80 57 81 48 79"/><path pathLength="100" class="b" d="M 49 58 C 45 63 45 70 49 74"/><path pathLength="100" class="c" d="M 56 33 L 56 41"/><path pathLength="100" class="c" d="M 66 32 L 66 40"/><path pathLength="100" class="c" d="M 76 34 L 76 42"/><path pathLength="100" class="c" d="M 77 53 C 73 55 71 58 72 62"/><path pathLength="100" class="b" d="M 47 84 L 46 94"/><path pathLength="100" class="b" d="M 56 85 L 57 99"/><path pathLength="100" class="b" d="M 66 83 L 65 91"/></g>`;
+  const spikes = kind === 'hit' ? `<g class="spikes"><path d="M 45 33 C 34 25 22 16 13 10 C 26 20 37 29 44 38 Z"/><path d="M 56 27 C 54 17 55 9 59 1 C 62 10 62 18 62 28 Z"/><path d="M 72 31 C 82 23 91 16 100 11 C 90 21 82 28 77 36 Z"/><path d="M 81 45 C 91 43 99 44 106 46 C 99 49 91 50 81 50 Z"/><path d="M 38 44 C 26 43 16 44 7 46 C 16 48 26 49 38 48 Z"/><path d="M 39 29 C 34 21 32 13 31 6 C 36 14 40 22 42 30 Z"/><path d="M 83 34 C 89 29 95 25 101 23 C 95 30 90 35 86 38 Z"/></g>` : '';
+  return `<svg viewBox="0 0 120 120" aria-hidden="true">${spikes}${fist}</svg>`;
+}
+// 飞拳轨迹：墨拳沿攻击者到目标的连线飞出，身后拖一道渐隐墨迹。
+function punchFlights() {
+  return punchFx.filter(f => f.kind === 'fly').map(f => `<span class="punch-trail" data-punch-trail="${f.id}" aria-hidden="true"></span><span class="punch-fx punch-fly" data-punch-flight="${f.id}" aria-hidden="true">${punchArt('cast')}</span>`).join('');
 }
 function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => { $('#toast').hidden = true; }, 4500); }
 function connected(ok) { $('#connection').classList.toggle('offline', !ok); $('#connection span').textContent = ok ? '实时联机' : '正在重连'; }
@@ -70,16 +83,36 @@ function receive(next) {
   const newRound = next.room?.phase === 'selecting' && (data?.room?.round !== next.room.round || data?.room?.gameNumber !== next.room.gameNumber);
   if (newRound) { ui.move = 'basicB'; ui.targets = []; ui.search = ''; }
   if (data?.room?.pending?.id !== next.room?.pending?.id) ui.blessing = {};
-  if (data?.room?.id !== next.room?.id || data?.room?.gameNumber !== next.room?.gameNumber) feedback = [];
+  if (data?.room?.id !== next.room?.id || data?.room?.gameNumber !== next.room?.gameNumber) { feedback = []; punchFx = []; basicFx = []; }
   const now = Date.now();
   feedback = feedback.filter(f => f.until > now);
   feedback.push(...combatChanges(data?.room, next.room).map(f => ({ ...f, id: ++feedbackId, start: now, until: now + 2400 })));
+  detectActionFx(next.room, now);
+  punchFx = punchFx.filter(f => f.until > now);
+  basicFx = basicFx.filter(f => f.until > now);
   clearTimeout(feedbackTimer);
-  if (feedback.length) feedbackTimer = setTimeout(() => { feedback = feedback.filter(f => f.until > Date.now()); key = ''; render(); }, Math.min(...feedback.map(f => f.until)) - now + 20);
+  const untils = [...feedback.map(f => f.until), ...punchFx.map(f => f.until), ...basicFx.map(f => f.until)];
+  if (untils.length) feedbackTimer = setTimeout(() => { const t = Date.now(); feedback = feedback.filter(f => f.until > t); punchFx = punchFx.filter(f => f.until > t); basicFx = basicFx.filter(f => f.until > t); key = ''; render(); }, Math.min(...untils) - now + 20);
   offset = next.serverTime - Date.now(); data = next; connected(true); render();
 }
-async function refresh() { if (!token) return; const identity = token; const next = await api('/api/state', undefined, 'GET'); if (identity === token) receive(next); }
-async function polling() { try { await refresh(); } catch { connected(false); } finally { setTimeout(polling, 800); } }
+// 揭晓回合时：为每记拳生成出招墨拳与飞行轨迹，为每个基础动作在本人头像上盖一枚印记。
+// 只认玩家实际选择的招式，超时自动出的大臂不触发。
+function detectActionFx(room, now) {
+  if (!room || room.phase !== 'reveal' || !room.actions) return;
+  const stamp = `${room.id}:${room.gameNumber}:${room.round}`;
+  if (stamp === punchStamp) return;
+  punchStamp = stamp;
+  const hits = (room.result?.damage || []).filter(d => d.move === 'punch' && d.amount > d.blessing);
+  for (const [playerId, action] of Object.entries(room.actions)) {
+    if (!action.automatic && BASIC_FX_MOVES.has(action.move)) basicFx.push({ id: ++basicFxId, playerId, move: action.move, start: now + 120, until: now + 1800 });
+    if (action.move !== 'punch') continue;
+    const targetId = action.targets?.[0];
+    punchFx.push({ id: ++punchFxId, playerId, kind: 'cast', start: now, until: now + 1600 });
+    if (targetId) punchFx.push({ id: ++punchFxId, kind: 'fly', fromId: playerId, targetId, start: now + 130, until: now + 1600 });
+    for (const hit of hits) if (hit.source === playerId) punchFx.push({ id: ++punchFxId, playerId: hit.target, kind: 'hit', start: now + 470, until: now + 1600 });
+  }
+}
+async function refresh() { if (!token) return; const identity = token; const next = await api('/api/state', undefined, 'GET'); if (identity === token) receive(next); }async function polling() { try { await refresh(); } catch { connected(false); } finally { setTimeout(polling, 800); } }
 function show(content) { modal.dataset.kind = ''; modalContent.innerHTML = content; if (!modal.open) modal.showModal(); }
 function home() {
   return `<section class="hero"><div><span class="pill"><span class="live-dot"></span> 与朋友，共赴一场策略对决</span><h1>积蓄力量，<br>见招拆招<span class="accent">。</span></h1><p>六种资源，百般变化。<br>蓄力、造盾、预判——在同时亮招的瞬间，决定胜负。</p><form id="login" class="login-card"><label for="nickname">给自己起一个临时昵称</label><div class="input-row"><input id="nickname" name="name" maxlength="12" required placeholder="你在战场上的名字" autocomplete="nickname"><button class="primary-button">进入大厅 ↗</button></div><small class="fine">无需账号 · 2–10 人联机 · 手机与电脑都能玩</small></form><button class="text-button" data-act="rules">先看看招式手册 →</button></div><div class="hero-art" aria-label="大臂竞技场插画"><div class="art-grid"></div><div class="orbit outer"></div><div class="orbit"></div><span class="art-label">BIGARM / ROUND 01</span><div class="hero-creature">${avatar(0)}</div><div class="hero-creature two">${avatar(1)}</div><div class="hero-creature three">${avatar(2)}</div><span class="float-card">✦ 积蓄，等待时机</span><span class="float-card lower">◇ 护盾，守住每一招</span><span class="art-bottom">● 同时选择 · 同时亮招 · 一起开局</span></div></section><section class="steps"><div><span class="eyebrow">HOW TO PLAY</span><h2>三步，进入战场。</h2></div><div><h3>01 / 叫上朋友</h3><p>创建房间，分享房间号或邀请链接。</p></div><div><h3>02 / 选择招式</h3><p>积蓄六种资源，制造护盾，指定目标。</p></div><div><h3>03 / 同时亮招</h3><p>比较攻击点数，完成选盾与减伤，决出胜者。</p></div></section>`;
@@ -123,8 +156,9 @@ function seats(room) {
     const action = revealed[p.id], selected = ui.targets.includes(p.id);
     const m = MOVES[ui.move], canTarget = !room.isSpectator && room.phase === 'selecting' && !room.ownAction && ['single', 'dual', 'splash'].includes(m?.target) && p.id !== data.self.id && p.hp > 0;
     const bubble = action ? `${MOVES[action.move]?.name || ''}${action.targets?.length ? ' → ' + action.targets.map(id => nameOf(id)).join('、') : ''}` : room.submitted.includes(p.id) ? '已锁定' : p.ready ? '已准备' : '';
-    const effects = feedback.filter(f => f.playerId === p.id);
-    return `<button class="seat ${p.id === data.self.id ? 'mine' : ''} ${(p.defeated ?? p.hp <= 0) ? 'dead' : ''} ${selected ? 'selected' : ''} ${canTarget ? 'targetable' : ''} ${effects.some(f => f.kind === 'damage') ? 'taking-damage' : ''}" data-act="seat" data-id="${p.id}" data-position="${(index - ownIndex + members.length) % members.length}" data-count="${members.length}" aria-label="${esc(p.name)}，${p.hp} 生命${canTarget ? '，选择目标' : ''}">${bubble ? `<span class="bubble">${esc(bubble)}</span>` : ''}${avatar(p.seat)}<strong>${p.seat + 1}. ${esc(p.name)}${p.id === data.self.id ? ' · 你' : ''}</strong><span class="vitals">♥ ${p.hp} / ${p.maxHp}${p.resources.Q ? ' · 祝 ' + p.resources.Q : ''}</span><span class="resources">${Object.entries(BASE_RESOURCE_NAMES).filter(([k]) => k !== 'Q').map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</span><span class="equipment-line">${p.shields.map(s => EQUIPMENT[s.type].name).join(' · ') || (p.connected ? '暂无装备' : '暂时离线')}</span><span class="seat-effects">${statusBadges(room, p)}</span>${effects.length ? `<span class="combat-feedback" role="status">${effects.map(f => `<span class="combat-fx ${f.kind}" data-feedback="${f.id}">${esc(f.text)}</span>`).join('')}</span>` : ''}</button>`;
+    const effects = feedback.filter(f => f.playerId === p.id), fx = punchFx.filter(f => f.playerId === p.id);
+    const stamps = basicFx.filter(f => f.playerId === p.id).map(f => `<span class="move-fx" data-basic-fx="${f.id}"><img src="/fx/basic-${f.move.slice(-1).toLowerCase()}.png" alt=""></span>`).join('');
+    return `<button class="seat ${p.id === data.self.id ? 'mine' : ''} ${(p.defeated ?? p.hp <= 0) ? 'dead' : ''} ${selected ? 'selected' : ''} ${canTarget ? 'targetable' : ''} ${effects.some(f => f.kind === 'damage') ? 'taking-damage' : ''} ${fx.some(f => f.kind === 'hit') ? 'punch-target' : ''}" data-act="seat" data-id="${p.id}" data-position="${(index - ownIndex + members.length) % members.length}" data-count="${members.length}" aria-label="${esc(p.name)}，${p.hp} 生命${canTarget ? '，选择目标' : ''}">${bubble ? `<span class="bubble">${esc(bubble)}</span>` : ''}${avatar(p.seat, stamps)}<strong>${p.seat + 1}. ${esc(p.name)}${p.id === data.self.id ? ' · 你' : ''}</strong><span class="vitals">♥ ${p.hp} / ${p.maxHp}${p.resources.Q ? ' · 祝 ' + p.resources.Q : ''}</span><span class="resources">${Object.entries(BASE_RESOURCE_NAMES).filter(([k]) => k !== 'Q').map(([k, name]) => `<span>${name} ${p.resources[k]}</span>`).join('')}</span><span class="equipment-line">${p.shields.map(s => EQUIPMENT[s.type].name).join(' · ') || (p.connected ? '暂无装备' : '暂时离线')}</span><span class="seat-effects">${statusBadges(room, p)}</span>${effects.length ? `<span class="combat-feedback" role="status">${effects.map(f => `<span class="combat-fx ${f.kind}" data-feedback="${f.id}">${esc(f.text)}</span>`).join('')}</span>` : ''}${fx.length ? `<span class="punch-fx-layer" aria-hidden="true">${fx.map(f => `<span class="punch-fx ${f.kind}" data-punch="${f.id}">${punchArt(f.kind)}</span>`).join('')}</span>` : ''}</button>`;
   }).join('');
 }
 function detail(m) {
@@ -196,7 +230,7 @@ function roomFooter(room, me) {
 function roomPage(room) {
   const me = room.players.find(p => p.id === data.self.id), active = room.players.filter(p => !p.left), living = active.filter(p => !(p.defeated ?? p.hp <= 0));
   const title = room.phase === 'selecting' ? room.ownAction ? '已锁定，等待亮招' : '秘密选择，同时亮招' : room.phase === 'choice' ? '完成回合中的选择' : room.phase === 'reveal' ? '同时亮招 · 结算结果' : room.phase === 'finished' ? '本局结束' : '集结，准备开局';
-  return `<div class="room-toolbar"><div class="room-title"><small>ROOM / ${room.id}</small><h1>${esc(room.name)}</h1></div><div class="toolbar-actions"><button class="secondary-button small" data-act="invite">邀请朋友 ↗</button><button class="text-button" data-act="leave">退出房间</button></div></div><div class="battle-layout"><section class="arena-wrap"><div class="arena-corner"><button class="text-button" data-act="scores">胜场榜</button><button class="text-button" data-act="history">战况记录</button><button class="text-button" data-act="rules">招式手册</button></div><div class="arena ${active.length > 6 ? 'many-players' : ''}"><div class="arena-circle"></div><div class="arena-center"><span class="eyebrow">${room.round ? 'ROUND ' + String(room.round).padStart(2, '0') : 'BIGARM ARENA'}</span><div class="symbol">✦</div><h2>${title}</h2><p>${room.phase === 'selecting' ? `${room.submitted.length} / ${living.length} 已锁定` : `${active.length} / ${room.capacity} 人 · ${living.length} 人存活`}</p><div class="clock" data-countdown></div></div>${seats(room)}</div>${roomFooter(room, me)}</section><aside class="command-panel">${arsenal(room, me)}</aside></div>`;
+  return `<div class="room-toolbar"><div class="room-title"><small>ROOM / ${room.id}</small><h1>${esc(room.name)}</h1></div><div class="toolbar-actions"><button class="secondary-button small" data-act="invite">邀请朋友 ↗</button><button class="text-button" data-act="leave">退出房间</button></div></div><div class="battle-layout"><section class="arena-wrap"><div class="arena-corner"><button class="text-button" data-act="scores">胜场榜</button><button class="text-button" data-act="history">战况记录</button><button class="text-button" data-act="rules">招式手册</button></div><div class="arena ${active.length > 6 ? 'many-players' : ''}"><div class="arena-circle"></div><div class="arena-center"><span class="eyebrow">${room.round ? 'ROUND ' + String(room.round).padStart(2, '0') : 'BIGARM ARENA'}</span><div class="symbol">✦</div><h2>${title}</h2><p>${room.phase === 'selecting' ? `${room.submitted.length} / ${living.length} 已锁定` : `${active.length} / ${room.capacity} 人 · ${living.length} 人存活`}</p><div class="clock" data-countdown></div></div>${seats(room)}${punchFlights()}</div>${roomFooter(room, me)}</section><aside class="command-panel">${arsenal(room, me)}</aside></div>`;
 }
 function positionSeats() {
   const arena = $('.arena'); if (!arena) return;
@@ -205,6 +239,29 @@ function positionSeats() {
     const angle = Math.PI / 2 + Number(el.dataset.position) * Math.PI * 2 / Number(el.dataset.count);
     el.style.left = `${w / 2 + Math.cos(angle) * (w / 2 - (mobile ? 48 : 85))}px`;
     el.style.top = `${h / 2 + Math.sin(angle) * Math.max(40, h / 2 - (mobile ? 53 : 85))}px`;
+    el.style.setProperty('--dir-x', (-Math.cos(angle)).toFixed(3));
+    el.style.setProperty('--dir-y', (-Math.sin(angle)).toFixed(3));
+  }
+}
+// 座位坐标在 positionSeats 之后才确定，飞拳与墨迹按两端座位实时对齐。
+function positionFlights() {
+  const arena = $('.arena'); if (!arena) return;
+  const center = id => { const seat = arena.querySelector(`.seat[data-id="${id}"]`); return seat ? [parseFloat(seat.style.left) || 0, parseFloat(seat.style.top) || 0] : null; };
+  for (const el of arena.querySelectorAll('[data-punch-flight]')) {
+    const f = punchFx.find(x => x.id === Number(el.dataset.punchFlight));
+    const trail = arena.querySelector(`[data-punch-trail="${el.dataset.punchFlight}"]`);
+    const from = f && center(f.fromId), to = f && center(f.targetId);
+    if (!from || !to) { el.hidden = true; if (trail) trail.hidden = true; continue; }
+    const dx = to[0] - from[0], dy = to[1] - from[1], heading = Math.atan2(dy, dx) * 180 / Math.PI;
+    el.style.left = `${from[0]}px`; el.style.top = `${from[1]}px`;
+    el.style.setProperty('--fx', `${dx.toFixed(1)}px`);
+    el.style.setProperty('--fy', `${dy.toFixed(1)}px`);
+    el.style.setProperty('--rot', `${(heading + 90).toFixed(2)}deg`);
+    if (trail) {
+      trail.style.left = `${from[0]}px`; trail.style.top = `${from[1]}px`;
+      trail.style.setProperty('--rot', `${heading.toFixed(2)}deg`);
+      trail.style.setProperty('--len', `${Math.hypot(dx, dy).toFixed(1)}px`);
+    }
   }
 }
 function render() {
@@ -228,12 +285,26 @@ function render() {
     const f = feedback.find(f => f.id === Number(el.dataset.feedback));
     el.style.animationDelay = `${-(Date.now() - f.start)}ms`;
   }
+  for (const el of document.querySelectorAll('[data-punch]')) {
+    const age = `${Date.now() - punchFx.find(f => f.id === Number(el.dataset.punch))?.start}ms`;
+    el.style.setProperty('--fx-age', age);
+    const seat = el.closest('.seat');
+    if (seat && el.classList.contains('hit')) seat.style.setProperty('--fx-age', age);
+  }
+  for (const el of document.querySelectorAll('[data-punch-flight], [data-punch-trail]')) {
+    const id = Number(el.dataset.punchFlight ?? el.dataset.punchTrail);
+    el.style.setProperty('--fx-age', `${Date.now() - (punchFx.find(f => f.id === id)?.start ?? Date.now())}ms`);
+  }
+  for (const el of document.querySelectorAll('[data-basic-fx]')) {
+    const id = Number(el.dataset.basicFx);
+    el.style.setProperty('--fx-age', `${Date.now() - (basicFx.find(f => f.id === id)?.start ?? Date.now())}ms`);
+  }
   for (const el of document.querySelectorAll('.taking-damage')) {
     const f = feedback.find(f => f.playerId === el.dataset.id && f.kind === 'damage');
     el.style.setProperty('--impact-age', `${-(Date.now() - f.start)}ms`);
   }
   if (modal.open && modal.dataset.kind === 'available') showAllMoves();
-  positionSeats(); countdown(); updateBlessingControls();
+  positionSeats(); positionFlights(); countdown(); updateBlessingControls();
 }
 function countdown() { const deadline = data?.room?.deadline; for (const el of document.querySelectorAll('[data-countdown]')) el.textContent = deadline ? `${Math.max(0, Math.ceil((deadline - Date.now() - offset) / 1000))}s` : ''; }
 function showRules(query = '') {
